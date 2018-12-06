@@ -1,1 +1,0 @@
-This is a workspace for client side code.
