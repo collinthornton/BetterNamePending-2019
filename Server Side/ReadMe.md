@@ -1,8 +1,8 @@
-#Server Side Mercury Code
+# Server Side Mercury Code
 
 ## For client visible interface hosted on the server see Mercury/Client Side
 
-##Files
+## Files
 
   - ping.php
   
