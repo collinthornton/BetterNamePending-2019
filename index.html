@@ -4,36 +4,24 @@
         <meta charset="utf-8" />
         <meta name="viewport" content = "width = device-width, initial-scale=1.0" />
         <title> Test Server </title>
-        <style>
-            canvas {
-                width: 90%;
-                height: 90%;
-                margin: auto;
-                display: block;
-                background: #eee;
-            }
-        </style>
-
     </head>
     <body>
-        <canvas id="canvas" style="border:10px solid"></canvas>
-        <script>
+        <h1>
+            <input type="text" id="box" />
+        </h1>
 
-            var canvas = document.getElementById("canvas");
-            var ctx = canvas.getContext("2d");
-
-            setInterval(function main() {
-                var d = new Date();
-                var t = d.getTime();
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                ctx.font = "20px Arial";
-                ctx.fillStlye = "#0095DD";
-                ctx.fillText(t, canvas.width/4, canvas.height/2);
-            }, 500)
-
-
-        </script>
     </body>
+    
+    <script type="text/javascript">
+              
+        var a = function() {
+          var d = new Date();
+          var t = d.getTime();
+
+          var div = document.getElementById("box");
+          div.value = t;
+        }
+      var interval = setInterval(a, 500);
+
+      </script>
 </html>
