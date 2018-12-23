@@ -40,7 +40,6 @@ class Ping
 
     unsigned int ping(unsigned int max_cm_distance = 0);
     unsigned int ping_cm(unsigned int max_cm_distance = 0);
-    static unsigned int convert_cm(unsigned int echoTime);
 
   private:
     void set_max_distance(unsigned int max_cm_distance);
@@ -127,15 +126,6 @@ bool Ping::ping_trigger()
     pingTimer.reset();
     _max_time = _maxEchoTime;
     return true;
-}
-
-unsigned int Ping::convert_cm(unsigned int echoTime)
-{
-#if ROUNDING_ENABLED == false
-    return (echoTime / US_ROUNDTRIP_CM); // Convert uS to centimeters (no rounding).
-#else
-    return NewPingConvert(echoTime, US_ROUNDTRIP_CM);                                                                 // Convert uS to centimeters.
-#endif
 }
 
 #endif

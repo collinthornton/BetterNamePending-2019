@@ -1,39 +1,48 @@
+These files are libraries to interface the STM32 Nucleo F746ZG ARM microcontroller with various sensors, chips, and breakout boards. 
 
-This directory is intended for project header files.
+Credits for the 'Ping.h' library are given to Tim Eckel and his 'New Ping' library for Arduino. Most of the logic is based on his work. 
 
-A header file is a file containing C declarations and macro definitions
-to be shared between several project source files. You request the use of a
-header file in your project source file (C, C++, etc) located in `src` folder
-by including it, with the C preprocessing directive `#include'.
+Files:
+    Ping.h
+    WiFly.h
 
-```src/main.c
+Documentation:
+    Ping.h
+        -Interfaces Mbed OS based system with generic ultrasonic sensors. 
+        -Only a single pin is needed - the library will toggle it between output and input.
+        -Can form array of sensors. Example:
+            Ping sonar[NUM_DEVICES]= {
+                Ping(PinName, MAX_DISTANCE),
+                Ping(PinName, MAX_DISTANCE)
+            };
+        
+        Methods:
+        -Ping(PinName, unsigned int max_cm_distance)
+        -unsigned int ping(unsigned int max_cm_distance)     Returns round-trip time in uS
+        -unsigned int ping_cm(unsigned int max_cm_distance)  Retruns distnace in cm
 
-#include "header.h"
+        TODO:
+        -Create interrupts for sensor input, no need to wait around for responses
+        -Ensure efficiency
 
-int main (void)
-{
- ...
-}
-```
+    WiFly.h
+        -Static library of function
+        -Defines DigitalOut, InterruptIn, Timer, and Timeour interfaces necessary for WiFly
+        -Handles interrupts
+        
+        Methods:
+        -void wifiConfig()
+        -void wifiDisconnectHost()
+        -int wifiInit()
+        -void wifiConnectPing()
 
-Including a header file produces the same results as copying the header file
-into each source file that needs it. Such copying would be time-consuming
-and error-prone. With a header file, the related declarations appear
-in only one place. If they need to be changed, they can be changed in one
-place, and programs that include the header file will automatically use the
-new version when next recompiled. The header file eliminates the labor of
-finding and changing all the copies as well as the risk that a failure to
-find one copy will result in inconsistencies within a program.
+        ISRs:
+        -void wifi_ISR(void)
+        -void connectionTimeOut(void)
+        -void hostLost(void)
+        -void hostGained(void)
 
-In C, the usual convention is to give header files names that end with `.h'.
-It is most portable to use only letters, digits, dashes, and underscores in
-header file names, and at most one dot.
-
-Read more about using header files in official GCC documentation:
-
-* Include Syntax
-* Include Operation
-* Once-Only Headers
-* Computed Includes
-
-https://gcc.gnu.org/onlinedocs/cpp/Header-Files.html
+        TODO:
+        -Enable string processing instead of handling each char individually
+        -Test system thouroughly to ensure reliability
+        -Retrict from disconnecting with host after period of time --May be server side issue
