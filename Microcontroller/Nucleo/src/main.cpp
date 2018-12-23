@@ -5,8 +5,6 @@
 #include <Ping.h>
 #include <WiFly.h>
 
-using namespace std;
-
 const unsigned int SONAR_NUM = 1;
 Ping sonar[SONAR_NUM] = {
 Ping(D2, MAX_DISTANCE)
@@ -45,6 +43,8 @@ int main()
   wifiInit();
   connected.fall(&hostLost);
   connected.rise(&hostGained);
+  joined.fall(&networkLost);
+  joined.rise(&networkGained);
 
   wifiConnectPing();
 

@@ -41,6 +41,8 @@ Documentation:
         -void connectionTimeOut(void)
         -void hostLost(void)
         -void hostGained(void)
+        -void networkLost(void)
+        -void networkGained(void)
 
         TODO:
         -Enable string processing instead of handling each char individually

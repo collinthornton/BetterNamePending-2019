@@ -14,12 +14,12 @@
 #include <mbed.h>
 
 const float delay = .35;
-const char SSID[] = "ASUS-2.4";
-const char PHRASE[] = "She*8llie";
+const char SSID[] = "";
+const char PHRASE[] = "";
 const char COM_REMOTE[] = "0";
 const char HOST_IP[] = "206.189.66.241";
 const char HOST_PORT[] = "80";
-//const char GET_PING[] = "GET /mercury2018/ping.php";  //! Apparently sends terminator char after string -- HTML doesn't understand
+const char GET_PING[] = "GET /mercury2018/ping.php";  //! Apparently sends terminator char after string -- HTML doesn't understand
 
 InterruptIn joined(D6), connected(D7);
 DigitalOut connect(D5);
@@ -43,6 +43,7 @@ void wifiConfig() {
     wifi.printf("set ip dhcp 1\r");
     wait(delay);
     wifi.printf("set ip host %s\r", HOST_IP);
+    wait(delay);
     wifi.printf("set ip remote 80\r");
     wait(delay);
     wifi.printf("set wlan ssid %s\r", SSID);
@@ -50,6 +51,8 @@ void wifiConfig() {
     wifi.printf("set wlan phrase %s\r", PHRASE);
     wait(1);
     wifi.printf("set wlan join 1\r");
+    wait(delay);
+    wifi.printf("set wlan channel 0\r");
     wait(delay);
     wifi.printf("set opt jointmr 10000\r");
     wait(delay);
@@ -146,15 +149,11 @@ int wifiInit(short numTries = 0) {
                 if(connected) break;
 
             if(!connected) wifiInit(++numTries);
-
         }
     }
     return 1;
 }
 void wifiConnectPing() {
-
-    if(!connected) wifiInit();
-
     wifi.printf("GET /mercury2018/ping.php\r\n");
 
     return;
@@ -170,13 +169,15 @@ void wifi_ISR(void) {
    // if(wifiIn == ' ') {
    //     dataIndex = 0;
    //     pc.printf("%s", wifiData);
-    //}
+   //}
 }
 void connectionTimeOut(void) {
+
+    // TODO Instead of printf statements, trigger a LED and/or speaker. Not a good idea to print inside ISR
+
     pc.printf("\n\n------| Connection Timeout Triggered |------\n\n");
-    while(!connected) {
-        //wifiInit();
-        connect = 1;
+    while(!connected || !joined) {
+        wifiInit();         // Note that pc.printf will not work in the ISR
     }
     pc.printf("\n\n------| Connection Timeout Released |------\n\n");
 }
@@ -184,6 +185,12 @@ void hostLost(void) {
     connectionTimeout.attach(connectionTimeOut, 1.5);
 }
 void hostGained(void) {
+    connectionTimeout.detach();
+}
+void networkLost(void) {
+    connectionTimeout.attach(connectionTimeOut, 1.5);
+}
+void networkGained(void) {
     connectionTimeout.detach();
 }
 
