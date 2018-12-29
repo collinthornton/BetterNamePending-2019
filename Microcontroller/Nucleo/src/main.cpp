@@ -1,36 +1,27 @@
-#include <mbed.h>
-
 #define MAX_DISTANCE 240
+#define ENABLE_SONAR_INTERRUPT              // Comment this line to enable single pin sonar, uncomment to increase speed by about 200x
 
-#include <Ping.h>
-#include <WiFly.h>
+#include <Includes.h>
 
-const unsigned int SONAR_NUM = 1;
 Ping sonar[SONAR_NUM] = {
-Ping(D2, MAX_DISTANCE)
+  #ifdef ENABLE_SONAR_INTERRUPT 
+  Ping(D2, D3, MAX_DISTANCE)                // Declare ultrasonic sensors here for interrupt use
+  #else
+  Ping(D2, MAX_DISTANCE)                    // Declare ultrasonic sensors here for single pin use
+  #endif
 };
 
-Timer dt;
-Timeout sonarTimeout[SONAR_NUM], checkSum;
-unsigned int ping[SONAR_NUM];
+Timer dt, sonarTimer;
+unsigned int ping[SONAR_NUM];               // Variable to track distance in cm for each ultrasonic sensor
 
-
-void sonar0_ISR()
-{
-  ping[0] = sonar[0].ping_cm();
-  sonarTimeout[0].attach_us(&sonar0_ISR, 33000);
+void sonar_timer() {
+  for(unsigned int i=0; i<SONAR_NUM; ++i)
+    ping[i] = sonar[i].ping_cm(MAX_DISTANCE);
+  sonarTimer.reset();
 }
 
-// --- add other ISR functions here --- //
-//  -be sure to update SONAR_NUM and attach appropriate interrupts
-//  -example for next ISR below
-//
-//  void sonar1_ISR() {
-//    ping[1] = sonar[1].ping_cm();
-//    sonarTimeout[1].attach_us(&sonar1_ISR, 33000);
-//  }
-//
-// ----------------------------------- //
+Ping * Ping::instance[SONAR_NUM];
+
 
 int main()
 {
@@ -38,38 +29,46 @@ int main()
   pc.printf("Activated\n");
   dt.start();
 
+  /*for(int i=0; i<SONAR_NUM; ++i) {
+    Ping::instance[i] = NULL;
+  }*/
+
+  pcData.resize(128);
+  wifiData.resize(128);
+
   wifi.attach(&wifi_ISR);
-  //wifiConfig();   // Uncomment this line to set the necessary WiFLY paramters
-  wifiInit();
-  connected.fall(&hostLost);
-  connected.rise(&hostGained);
-  joined.fall(&networkLost);
-  joined.rise(&networkGained);
 
-  wifiConnectPing();
+  wifiConfig(true);      // Set to true to load from saved -- set to false to change paramters
+  while(wifiInit() < 0) {
+    pc.printf("UNABLE TO CONNECT TO SERVER\n");
+    hc05.printf("UNABLE TO CONNECT TO SERVER\n");
+  }                         // Hang on failure to connect to server
 
-  //sonarTimeout[0].attach_us(&sonar0_ISR, 33000);
-  // sonarTimeout[1].attach_us(&sonar1_ISR, 33000);
-  
-  //while(!wifi.readable()) {}
+
+  //wifiConnectPing();
+
+  sonarTimer.start();
 
   while (1)
   {
 
-    char pcIn;
-    if(pc.readable()) {
-      pcIn = pc.getc();
-      if(pcIn == '~') {
-        wifiConnectPing();
-        pc.printf("\n");
-      }
-      wifi.putc(pcIn);
-      //pc.putc(pcIn);
+    __disable_irq();
+      handleLossOfSignal();
+    __enable_irq();
+
+
+    processPC();
+    processHC05();
+
+    if(sonarTimer.read_us() >= 33000) {
+      sonar_timer();
+
+    pc.printf("%i ", ping[0]);
+    pc.printf("%i\n", dt.read_us());    
     }
-
-    //pc.printf("%d - %i\n", ping[0], dt.read_us());
-
+  
     dt.reset();
-
+    
   }
+
 }

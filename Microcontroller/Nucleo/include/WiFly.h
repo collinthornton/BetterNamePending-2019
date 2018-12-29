@@ -18,25 +18,39 @@ const char SSID[] = "";
 const char PHRASE[] = "";
 const char COM_REMOTE[] = "0";
 const char HOST_IP[] = "206.189.66.241";
-const char HOST_PORT[] = "80";
+const char HOST_PORT[] = "80";                        // Port 5555 for distribution server
 const char GET_PING[] = "GET /mercury2018/ping.php";  //! Apparently sends terminator char after string -- HTML doesn't understand
+const char FILE_NAME[] = "BetterNamePending";
 
 InterruptIn joined(D6), connected(D7);
 DigitalOut connect(D5);
 Timeout connectionTimeout;
+
 Serial wifi(D1, D0, 9600);
-Serial pc(USBTX, USBRX, 9600);
+Serial hc05(PE_8, PE_7, 9600);
 
-char wifiData[128];
+string wifiData;
 char wifiIn;
-unsigned short dataIndex = 0;
 
-void wifiConfig() {
+volatile bool networkIsTimedOutShared;
+volatile bool hostIsTimedOutShared;
+
+bool networkIsTimedOut;
+bool hostIsTimedOut;
+
+void wifiConfig(bool loadFile = true) {
     wait(delay);
     wifi.printf("$$$");
     wait(delay);
     wifi.printf("\r");
     wait(delay);
+
+    if(loadFile) {
+        wifi.printf("load %s\r", FILE_NAME);
+        wait(1);
+        wifi.printf("exit\r");
+        return;
+    }
 
     wifi.printf("set com remote %s\r", COM_REMOTE);
     wait(delay);
@@ -44,7 +58,7 @@ void wifiConfig() {
     wait(delay);
     wifi.printf("set ip host %s\r", HOST_IP);
     wait(delay);
-    wifi.printf("set ip remote 80\r");
+    wifi.printf("set ip remote %s\r", HOST_PORT);
     wait(delay);
     wifi.printf("set wlan ssid %s\r", SSID);
     wait(1);
@@ -59,10 +73,9 @@ void wifiConfig() {
     wifi.printf("set sys iofunc 0x70\r");
     wait(delay);
 
-    wifi.printf("save\r");
+    wifi.printf("save %s\r", FILE_NAME);
     wait(delay);
     wifi.printf("reboot\r");
-    wait(5);
 
     return;
 }
@@ -116,7 +129,7 @@ int wifiInit(short numTries = 0) {
 
         connect = 1;
 
-        while(init.read() < 5)
+        while(init.read() < 3)
             if(connected) break;
         
         init.stop();
@@ -153,45 +166,57 @@ int wifiInit(short numTries = 0) {
     }
     return 1;
 }
-void wifiConnectPing() {
-    wifi.printf("GET /mercury2018/ping.php\r\n");
+int wifiConnectPing() {
+    if(!connected) return -1;
+    wifi.printf("GET /mercury2018/ping.php?test=success\r\n");
 
-    return;
+    return 0;
+}
+void processHC05() {
+
+    if(!hc05.readable()) return;
+    char btIn;
+
+    btIn = hc05.getc();
+    wifi.putc(btIn);
+}
+void inputWifi() {
+    wifiIn = wifi.getc();
+    hc05.putc(wifiIn);
+}
+int processWifi() {
+    if(!wifi.readable()) {
+        return -1;
+    } 
+
+    inputWifi();
+    //wifiData += wifiIn;
+
+    return 0;
 }
 
 
 void wifi_ISR(void) {
-    if(wifi.readable())
-        wifiIn = wifi.getc();
-    pc.putc(wifiIn);
-
-   // wifiData[dataIndex++] = wifiIn;
-   // if(wifiIn == ' ') {
-   //     dataIndex = 0;
-   //     pc.printf("%s", wifiData);
-   //}
+    processWifi();
 }
-void connectionTimeOut(void) {
 
-    // TODO Instead of printf statements, trigger a LED and/or speaker. Not a good idea to print inside ISR
 
-    pc.printf("\n\n------| Connection Timeout Triggered |------\n\n");
-    while(!connected || !joined) {
-        wifiInit();         // Note that pc.printf will not work in the ISR
+void handleLossOfSignal() {
+    if(!joined) {
+        hc05.printf("------| Network Timed Out |------\n");
+        while(!joined) { 
+            wifiConfig();
+            wait(5);
+        }
+        hc05.printf("------| Timeout Released |------\n");
     }
-    pc.printf("\n\n------| Connection Timeout Released |------\n\n");
-}
-void hostLost(void) {
-    connectionTimeout.attach(connectionTimeOut, 1.5);
-}
-void hostGained(void) {
-    connectionTimeout.detach();
-}
-void networkLost(void) {
-    connectionTimeout.attach(connectionTimeOut, 1.5);
-}
-void networkGained(void) {
-    connectionTimeout.detach();
+    if(!connected) {
+        hc05.printf("------| Connection Timed Out |------\n");
+        while(!connected) { wifiInit(); }
+        hc05.printf("------| Timeout Released |------\n");
+    }
+
+    return;
 }
 
 #endif
