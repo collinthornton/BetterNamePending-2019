@@ -45,7 +45,7 @@ public class ClientThread extends Thread {
             server.broadcast(serverMessage, this);
 
         } catch (IOException e) {
-            StdOut.println("Error in ClientThread: " + e.getMessage());
+            StdOut.print("Error in ClientThread: " + e.getMessage() + "/r");
             // e.printStackTrace();
         }
     }
@@ -56,9 +56,9 @@ public class ClientThread extends Thread {
     void printClients() {
         sendMessage(this.socket.getInetAddress().getHostAddress());
         if (server.hasClients()) {
-            writer.println("Connected clients: " + server.getClientNames());
+            writer.print("Connected clients: " + server.getClientNames() + "\r");
         } else {
-            writer.println("No other clients connected");
+            writer.print("No other clients connected\r");
         }
     }
 
@@ -66,6 +66,6 @@ public class ClientThread extends Thread {
      * Sends a message to the client.
      */
     void sendMessage(String message) {
-        writer.println(message);
+        writer.print(message + "\r");
     }
 }
