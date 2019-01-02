@@ -5,7 +5,9 @@
 #include <string>
 #include <WiFly.h>
 
-Serial pc(USBTX, USBRX, 9600);
+#ifndef ADJUST_HC05
+Serial pc(USBTX, USBRX, 38400);
+#endif
 
 string pcData;
 
@@ -14,6 +16,10 @@ char inputPC() {
     char pcIn;
 
     pcIn = pc.getc();
+    #ifdef ADJUST_HC05
+    hc05.putc(pcIn);
+    pc.putc(pcIn);
+    #endif
 
     return pcIn;
 }

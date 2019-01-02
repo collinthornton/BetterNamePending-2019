@@ -18,25 +18,25 @@ const char SSID[] = "";
 const char PHRASE[] = "";
 const char COM_REMOTE[] = "0";
 const char HOST_IP[] = "206.189.66.241";
-const char HOST_PORT[] = "80";                        // Port 5555 for distribution server
+const char HOST_PORT[] = "5555";                        // Port 5555 for distribution server
 const char GET_PING[] = "GET /mercury2018/ping.php";  //! Apparently sends terminator char after string -- HTML doesn't understand
 const char FILE_NAME[] = "BetterNamePending";
 
 InterruptIn joined(D6), connected(D7);
 DigitalOut connect(D5);
-Timeout connectionTimeout;
+Timer losTimer;
 
-Serial wifi(D1, D0, 9600);
-Serial hc05(PE_8, PE_7, 9600);
+Serial wifi(D1, D0, 38400);
+Serial hc05(PE_8, PE_7, 38400);
+#ifdef ADJUST_HC05
+Serial pc(USBTX, USBRX, 38400);
+#endif
+
 
 string wifiData;
 char wifiIn;
 
-volatile bool networkIsTimedOutShared;
-volatile bool hostIsTimedOutShared;
-
-bool networkIsTimedOut;
-bool hostIsTimedOut;
+bool firstDetection = true;
 
 void wifiConfig(bool loadFile = true) {
     wait(delay);
@@ -179,6 +179,9 @@ void processHC05() {
 
     btIn = hc05.getc();
     wifi.putc(btIn);
+    #ifdef ADJUST_HC05
+    pc.putc(btIn);
+    #endif
 }
 void inputWifi() {
     wifiIn = wifi.getc();
@@ -202,18 +205,32 @@ void wifi_ISR(void) {
 
 
 void handleLossOfSignal() {
-    if(!joined) {
-        hc05.printf("------| Network Timed Out |------\n");
-        while(!joined) { 
-            wifiConfig();
-            wait(5);
+    if((!joined || !connected) && firstDetection) {
+        losTimer.reset();
+        losTimer.start();
+        firstDetection = false;
+    } else if((!joined || !connected) && !firstDetection) {
+        if(losTimer.read() >= 1.5) {
+            losTimer.stop();
+            if(!joined) {
+                hc05.printf("------| Network Timed Out |------\n");
+                while(!joined) { 
+                    wifiConfig();
+                }
+                hc05.printf("------| Timeout Released |------\n");
+            }
+            if(!connected) {
+                hc05.printf("------| Connection Timed Out |------\n");
+                while(!connected) { 
+                    wifiInit();
+                }
+                hc05.printf("------| Timeout Released |------\n");
+            }
+            firstDetection = true;
+        } else if(joined && connected) {
+            losTimer.stop();
+            losTimer.reset();
         }
-        hc05.printf("------| Timeout Released |------\n");
-    }
-    if(!connected) {
-        hc05.printf("------| Connection Timed Out |------\n");
-        while(!connected) { wifiInit(); }
-        hc05.printf("------| Timeout Released |------\n");
     }
 
     return;

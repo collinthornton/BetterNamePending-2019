@@ -20,21 +20,15 @@
 // Shouldn't need to change these values unless you have a specific need to do so.
 #define MAX_SENSOR_DISTANCE 500 // Maximum sensor distance can be as high as 500cm, no reason to wait for ping longer than sound takes to travel this distance and back. Default=500
 #define US_ROUNDTRIP_CM 57      // Microseconds (uS) it takes sound to travel round-trip 1cm (2cm total), uses integer to save compiled code space. Default=57
-#define US_ROUNDTRIP_IN 146     // Microseconds (uS) it takes sound to travel round-trip 1 inch (2 inches total), uses integer to save compiled code space. Defalult=146
 #define ROUNDING_ENABLED false  // Set to "true" to enable distance rounding which also adds 64 bytes to binary size. Default=false
-#define TIMER_ENABLED true      // Set to "false" to disable the timer ISR (if getting "__vector_7" compile errors set this to false). Default=true
-
-#define SONAR_NUM 1             // Adjust to indicate total number of ultrasonic sensors. 
 
 // Probably shouldn't change these values unless you really know what you're doing.
 #define NO_ECHO 0               // Value returned if there's no ping echo within the specified MAX_SENSOR_DISTANCE or max_cm_distance. Default=0
 #define MAX_SENSOR_DELAY 5800   // Maximum uS it takes for sensor to start the ping. Default=5800
-#define ECHO_TIMER_FREQ 24      // Frequency to check for a ping echo (every 24uS is about 0.4cm accuracy). Default=24
-#define PING_MEDIAN_DELAY 29000 // Microsecond delay between pings in the ping_median method. Default=29000
 #ifndef ENABLE_SONAR_INTERRUPT
 #define PING_OVERHEAD 5         // Ping overhead in microseconds (uS). Default=5
 #else
-#define PING_OVERHEAD 200
+#define PING_OVERHEAD 150       //! Remember to calibrate PING_OVERHEAD for device
 #endif
 #define PING_TIMER_OVERHEAD 13  // Ping timer overhead in microseconds (uS). Default=13
                                 // Conversion from uS to distance (round result to nearest cm or inch).
@@ -56,9 +50,11 @@ class Ping
 
     unsigned int ping(unsigned int max_cm_distance = 0);
     unsigned int ping_cm(unsigned int max_cm_distance = 0);
-    static int ping_cm_all(unsigned int max_cm_distance = 0);
+    static int* ping_cm_all(unsigned int max_cm_distance = 0);
+    static int ping_all(unsigned int max_cm_distance = 0);
 
     Timer pingTimer;
+    static Timer triggerTimer;
     unsigned int _maxEchoTime;
     long _max_time;
 
@@ -257,8 +253,15 @@ void Ping::set_state(short state) {
     }
 }
 bool Ping::ping_trigger_all() {      
+    Timer triggerTimer;
     #ifndef ENABLE_SONAR_INTERRUPT
     if(instance[0] == NULL) return false;
+    
+    bool isReady[SONAR_NUM];
+    for(int i=0; i<SONAR_NUM; ++i) {
+        instance[i]->triggerSuccess = false;
+        isReady[i] = true;
+    }
 
     set_output();
     wait_us(5);
@@ -273,25 +276,23 @@ bool Ping::ping_trigger_all() {
     for(int i=0; i<SONAR_NUM; ++i) {
         if(instance[i] != NULL){
             if(instance[i]->pin)
-                instance[i]->triggerSuccess = false;
+                isReady[i] = false;
         }
     }
 
-    Timer triggerTimer;
     triggerTimer.start();
     long max_time = instance[0]->_maxEchoTime + MAX_SENSOR_DELAY;
     unsigned short numSuccesses = 0;
 
 
     while(triggerTimer.read_us() < max_time) {
-        for(int i=0; i<SONAR_NUM; ++ i)
-            if(instance[i]->pin) {
+        for(int i=0; i<SONAR_NUM; ++ i) {
+            if(instance[i]->pin && !instance[i]->triggerSuccess && isReady) {
                  instance[i]->triggerSuccess = true;
                  ++numSuccesses;
-            } else {
-                instance[i]->triggerSuccess = false;
             }
-            if(numSuccesses == SONAR_NUM) break;
+        }
+        if(numSuccesses == SONAR_NUM) break;
     }
 
     for(int i=0; i<SONAR_NUM; ++i) {
@@ -305,8 +306,124 @@ bool Ping::ping_trigger_all() {
     return true;
 
     #else
+    bool isReady[SONAR_NUM];
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(instance[i] != NULL) {
+            if(instance[i]->echo) instance[i]->triggerSuccess = false;
+            isReady[i] = true;
+        }
+    }
+    __disable_irq();
+    set_state(0);
+    wait_us(4);
+    set_state(1);
+    wait_us(10);
+    set_state(0);
+
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(instance[i] != NULL) {
+            if(instance[i]->echo) isReady[i] = false;
+        }
+    }
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(isReady && instance[i] != NULL) {
+            instance[i]->pingTimer.reset();
+            instance[i]->pingTimer.start();
+            instance[i]->_max_time = instance[i]->_maxEchoTime;
+            instance[i]->triggerSuccess = true;
+        }
+    }
+    triggerTimer.reset();
+    triggerTimer.start();
+
+    __enable_irq();
+    return true;
 
     #endif
+}
+int Ping::ping_all(unsigned int max_cm_distance)
+{
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(max_cm_distance > 0)
+            instance[i]->set_max_distance(max_cm_distance); // Call function to set a new max sensor distance for each device
+    }
+
+    ping_trigger_all();                                     // Trigger a ping, if any sensor's triggerSuccess returns false, return the negative instance number of the sensor. 
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(!instance[i]->triggerSuccess)
+            return i*-1;
+        instance[i]->triggerSuccess = false;
+    }
+
+    #ifdef ENABLE_SONAR_INTERRUPT                           // If interrupts are enabled, all that needs to be done is trigger the ping
+    return 1;
+    
+    #else                                                   // Otherwise, we have to sit around and wait for a response
+    for(int i=0; i<SONAR_NUM; ++i) {
+        instance[i]->pin.input();
+    }
+
+    while(triggerTimer.read_us() < instance[0]->_max_time) {
+        for(int i=0; i<SONAR_NUM; ++i) {
+            if(!instance[i]->pin) {
+                instance[i]->pingTimer.stop();
+            }
+        }
+    }
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(instance[i]->pingTimer.read_us() <= instance[i]->_max_time) {
+            instance[i]->tempTime = instance[i]->pingTimer.read_us() - PING_OVERHEAD;   // Calculate ping time, including overhead
+            instance[i]->pingTimer.reset();
+        } else {
+            instance[i]->pingTimer.stop();
+            instance[i]->pingTimer.reset();
+        }
+    }
+
+    return 1;
+    #endif
+
+}
+int*  Ping::ping_cm_all(unsigned int max_cm_distance) {
+    unsigned int echoTime[SONAR_NUM];
+    int distance_cm[SONAR_NUM];
+    bool pingSuccess[SONAR_NUM];
+    for(int i=0; i<SONAR_NUM; ++i) pingSuccess[i] = true;
+
+    #ifndef ENABLE_SONAR_INTERRUPT
+    ping_all(max_cm_distance);
+    for(int i=0; i<SONAR_NUM; ++i) {
+        echoTime = instance[i]->tempTime;
+    }                                         // Calls the ping method and returns with the ping echo distance in uS.
+    #else
+
+    __disable_irq();
+    for(int i=0; i<SONAR_NUM; ++i){
+        instance[i]->pingUpdated = instance[i]->pingUpdatedShared;
+        if(instance[i]->pingUpdated) {
+            echoTime[i] = instance[i]->tempTime - PING_OVERHEAD;
+            instance[i]->pingUpdated = false;
+            instance[i]->pingUpdatedShared = false;
+        }
+    }
+    __enable_irq();
+
+    ping_all(max_cm_distance); 
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(echoTime[i] > instance[i]->_maxEchoTime) pingSuccess[i] = false;
+    }
+    #endif
+#if ROUNDING_ENABLED == false
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(pingSuccess) distance_cm[i] = echoTime[i] / US_ROUNDTRIP_CM;
+    }
+    return distance_cm;                   // Call the ping method and returns the distance in centimeters (no rounding).
+#else
+    for(int i=0; i<SONAR_NUM; ++i) {
+        if(pingSuccess) distance_cm[i] = instance[i]->NewPingConvert(echoTime[i], US_ROUNDTRIP_CM); // Convert uS to cm.
+    }
+    return distance_cm;
+#endif
 }
 #ifdef ENABLE_SONAR_INTERRUPT
 void Ping::static_ISR0(void) {
@@ -348,7 +465,7 @@ void Ping::static_ISR8(void) {
 void Ping::ISR(void) {
     pingTimer.stop();
     pingUpdatedShared = true;
-    tempTime = pingTimer.read_us();
+    tempTime = pingTimer.read_us() - PING_OVERHEAD;
     pingTimer.reset();
 }
 #endif
