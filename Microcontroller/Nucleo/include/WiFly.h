@@ -19,8 +19,11 @@ const char PHRASE[] = "";
 const char COM_REMOTE[] = "0";
 const char HOST_IP[] = "206.189.66.241";
 const char HOST_PORT[] = "5555";                        // Port 5555 for distribution server
-const char GET_PING[] = "GET /mercury2018/ping.php";  //! Apparently sends terminator char after string -- HTML doesn't understand
+const char GET_PING[] = "GET /mercury2018/ping.php";    //! Apparently sends terminator char after string -- HTML doesn't understand
 const char FILE_NAME[] = "BetterNamePending";
+const char BAUD[] = "38400";
+const char COMM_MATCH[] =  "13";                        // ASCII code for \r
+const char WIFI_RATE[] = "14";                          // 12 = default
 
 InterruptIn joined(D6), connected(D7);
 DigitalOut connect(D5);
@@ -72,7 +75,14 @@ void wifiConfig(bool loadFile = true) {
     wait(delay);
     wifi.printf("set sys iofunc 0x70\r");
     wait(delay);
+    wifi.printf("set uart baud %s\r", BAUD);
+    wait(delay);
+    wifi.printf("set wlan rate %s\r", WIFI_RATE);
+    wait(delay);
+    wifi.printf("set comm match %s\r", COMM_MATCH);
 
+    wifi.printf("save\r");
+    wait(delay);
     wifi.printf("save %s\r", FILE_NAME);
     wait(delay);
     wifi.printf("reboot\r");

@@ -2,6 +2,7 @@
 #define INCLUDES_H
 
 #include <mbed.h>
+#include <string>
 
 #include <Ping.h>
 #include <SerialPC.h>
