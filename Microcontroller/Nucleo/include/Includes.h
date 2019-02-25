@@ -7,5 +7,7 @@
 #include <Ping.h>
 #include <SerialPC.h>
 #include <WiFly.h>
+#include <Motor.h>
+#include <Drive.h>
 
 #endif

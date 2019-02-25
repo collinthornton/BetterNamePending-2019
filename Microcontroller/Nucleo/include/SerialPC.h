@@ -4,18 +4,24 @@
 #include <mbed.h>
 #include <string>
 #include <WiFly.h>
+#include "Motor.h"
 
 #ifndef ADJUST_HC05
 Serial pc(USBTX, USBRX, 38400);
 #endif
 
 string pcData;
+Motor motor(D3, D12);
+bool direction;
+float speed;
 
+bool printSonar=true;
 
 char inputPC() {
     char pcIn;
 
     pcIn = pc.getc();
+    //wifi.putc(pcIn);
     #ifdef ADJUST_HC05
     hc05.putc(pcIn);
     pc.putc(pcIn);
@@ -44,6 +50,29 @@ int processPC() {
                 connect = !connect;
                 hc05.printf("\n%d\n", connect);
                 pcData.clear();
+                return 1;
+            case 'w':
+                direction == 0 ? speed+=.1 : speed-=.1;
+                if(speed > 1) speed = 1;
+                else if(speed < 0) {
+                    direction == 0 ? direction=1 : direction=0;
+                    speed = -speed;
+                }
+                pc.printf("%3.2f, %d\n", speed, direction);
+                motor.drive(speed, direction);
+                return 1;
+            case 's':
+                direction == 0 ? speed-=.1 : speed+=.1;
+                if(speed > 1) speed = 1;
+                else if(speed < 0) {
+                    direction == 0 ? direction=1 : direction=0;
+                    speed = -speed;
+                }
+                pc.printf("%3.2f, %d\n", speed, direction);
+                motor.drive(speed, direction);
+                return 1;
+            case 'p':
+                printSonar = !printSonar;
                 return 1;
         }
     }

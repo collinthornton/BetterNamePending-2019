@@ -13,35 +13,76 @@
 
 #include <mbed.h>
 
-const float delay = .35;
-const char SSID[] = "";
-const char PHRASE[] = "";
-const char COM_REMOTE[] = "0";
-const char HOST_IP[] = "206.189.66.241";
-const char HOST_PORT[] = "5555";                        // Port 5555 for distribution server
-const char GET_PING[] = "GET /mercury2018/ping.php";    //! Apparently sends terminator char after string -- HTML doesn't understand
-const char FILE_NAME[] = "BetterNamePending";
-const char BAUD[] = "38400";
-const char COMM_MATCH[] =  "13";                        // ASCII code for \r
-const char WIFI_RATE[] = "14";                          // 12 = default
+class Wifi {
 
-InterruptIn joined(D6), connected(D7);
-DigitalOut connect(D5);
-Timer losTimer;
+    public:
+        Wifi(PinName, PinName, PinName, int);
+        void wifiConfig(bool);
+        int wifiInit(short);
+        int wifiDisconnectHost(void);
+        int wifiConnectPing(void);
+        void processHC05(void);
+
+        void transmit(char* input);
+        void transmitBT(char* input);
+
+    private:
+        void inputWifi(void);
+        int processWifi(void);
+        void handleLossOfSignal(void);
+        int processWifi(void);
+
+        static void wifi_ISR(void);
+        static Wifi* instance;
+
+        const float delay = .35;
+        const char* SSID;
+        const char* PHRASE;
+        const char* COM_REMOTE;
+        const char* HOST_IP;
+        const char* HOST_PORT;
+        const char* GET_PING; 
+        const char* FILE_NAME;
+        const char* BAUD;
+        const char* COMM_MATCH;
+        const char* WIFI_RATE;
+
+        InterruptIn joined, connected;      // D6, D7
+        DigitalOut connect;                 // D5
+        Timer losTimer;
+
+        Serial wifi;
+        Serial hc05;
+
+        string wifiData;
+        char wifiIn;
+
+        bool firstDetection = true;
+};
 
 Serial wifi(D1, D0, 38400);
-Serial hc05(PE_8, PE_7, 38400);
-#ifdef ADJUST_HC05
-Serial pc(USBTX, USBRX, 38400);
-#endif
 
+Wifi::Wifi(PinName joinPin = D6, PinName connectedPin = D7, PinName connectPin = D5, int  baud = 38400) : 
+        joined(joinPin), connected(connectedPin), connect(connectPin), wifi(D1, D0, baud), hc05(PE_8, PE_7, baud) {
 
-string wifiData;
-char wifiIn;
+    instance = this;
+    wifi.attach(&wifi_ISR);
 
-bool firstDetection = true;
+    SSID = "Warring$Turtles$2.0";
+    PHRASE = "12345678";
+    COM_REMOTE = "0";
+    HOST_IP = "206.189.66.241";
+    HOST_PORT = "5555";                        // Port 5555 for distribution server
+    GET_PING = "GET /mercury2018/ping.php";    //! Apparently sends terminator char after string -- HTML doesn't understand
+    FILE_NAME = "BetterNamePending";
+    BAUD = "38400";
+    COMM_MATCH =  "13";                        // ASCII code for \r
+    WIFI_RATE = "14";                          // 12 = default
 
-void wifiConfig(bool loadFile = true) {
+    wifiData.resize(128);
+}
+
+void Wifi::wifiConfig(bool loadFile = true) {
     wait(delay);
     wifi.printf("$$$");
     wait(delay);
@@ -80,21 +121,23 @@ void wifiConfig(bool loadFile = true) {
     wifi.printf("set wlan rate %s\r", WIFI_RATE);
     wait(delay);
     wifi.printf("set comm match %s\r", COMM_MATCH);
+    wait(delay);
+    wifi.printf("open\r");
 
-    wifi.printf("save\r");
-    wait(delay);
-    wifi.printf("save %s\r", FILE_NAME);
-    wait(delay);
-    wifi.printf("reboot\r");
+//  wifi.printf("save\r");
+//  wait(delay);
+//  wifi.printf("save %s\r", FILE_NAME);
+//  wait(delay);
+//  wifi.printf("reboot\r");
 
     return;
 }
-int wifiDisconnectHost() {
+int Wifi::wifiDisconnectHost(void) {
     connect = 0;
     if(!connected) return 1;
     else return -1;
 }
-int wifiInit(short numTries = 0) {
+int Wifi::wifiInit(short numTries = 0) {
 
     Timer init;
 
@@ -176,13 +219,19 @@ int wifiInit(short numTries = 0) {
     }
     return 1;
 }
-int wifiConnectPing() {
+int Wifi::wifiConnectPing(void) {
     if(!connected) return -1;
     wifi.printf("GET /mercury2018/ping.php?test=success\r\n");
 
     return 0;
 }
-void processHC05() {
+void Wifi::transmit(char* input) {
+    wifi.printf("%s", input);
+}
+void Wifi::transmitBT(char* input) {
+    hc05.printf("%s", input);
+}
+void Wifi::processHC05(void) {
 
     if(!hc05.readable()) return;
     char btIn;
@@ -193,11 +242,11 @@ void processHC05() {
     pc.putc(btIn);
     #endif
 }
-void inputWifi() {
+void Wifi::inputWifi(void) {
     wifiIn = wifi.getc();
     hc05.putc(wifiIn);
 }
-int processWifi() {
+int Wifi::processWifi(void) {
     if(!wifi.readable()) {
         return -1;
     } 
@@ -209,12 +258,13 @@ int processWifi() {
 }
 
 
-void wifi_ISR(void) {
-    processWifi();
+void Wifi::wifi_ISR(void) {
+    if(Wifi::instance != NULL)
+        instance->processWifi();
 }
 
 
-void handleLossOfSignal() {
+void Wifi::handleLossOfSignal(void) {
     if((!joined || !connected) && firstDetection) {
         losTimer.reset();
         losTimer.start();
