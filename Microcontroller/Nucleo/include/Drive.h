@@ -59,13 +59,13 @@ Drive::Drive(Motor& motorFR, Motor& motorBR, Motor& motorBL, Motor& motorFL) {
 //------------------------------------------------------------------------------------------------------------//
 
 void Drive::drive(float rho, float theta = 0, float phi = 0) {                  // (rho, theta) = linear vector -- phi = rotation about z-axis
-    theta < -180 ? theta = -180 : theta = theta;
-    theta > 180 ? theta = 180 : theta = theta;
-    rho < 0 ? rho = 0 : rho = rho;
-    rho > 1 ? rho = 1 : rho = rho;     
-    phi > 1 ? phi = 1 : phi=phi;
-    phi < -1 ? phi = -1: phi=phi;                         
-                                                                                // Directional Quadrants
+    theta = max(theta, (float)-180.0);
+    theta = min(theta, (float)180.0);
+    rho = max(rho, (float)0.0);
+    rho = min(rho, (float)1.0);
+    phi = max(phi, (float)-1.0);
+    phi = min(phi, (float)1.0);
+                                                                                    // Directional Quadrants
     if(theta >= -45 && theta <= 45) {                                               // All motors forward if theta is from -45deg - 45deg   
         for(int i=0; i<4; ++i) {
             direction[i] = 0;
@@ -108,22 +108,19 @@ void Drive::drive(float rho, float theta = 0, float phi = 0) {                  
         }
     }
                                                                             // Note that rotation control will be very sensitive
-    if(phi > 0) {                                                                   // Right motors decrease by speed*phi
-        speed[0] -= speed[0]*phi;                                                   // Left motors increased by speed*phi
-        speed[1] -= speed[1]*phi;
-        speed[2] += speed[2]*phi;
-        speed[3] += speed[3]*phi;
-    }
-    else if(phi < 0) {                                                              // Right motors increase by speed*phi
-        speed[0] += speed[0]*phi;                                                   // Left motors decreased by speed*phi
-        speed[1] += speed[1]*phi;
-        speed[2] -= speed[2]*phi;
-        speed[3] -= speed[3]*phi;
-    }
+                                                                                  // Right motors decrease by speed*phi
+    speed[0] -= 2*speed[0]*phi;                                                   // Left motors increased by speed*phi
+    speed[1] -= 2*speed[1]*phi;
+    speed[2] += 2*speed[2]*phi;
+    speed[3] += 2*speed[3]*phi;
 
     for(int i=0; i<4; ++i) {
-        speed[i] > 1 ? speed[i]=1 : speed[i]=speed[i];
-        speed[i] < 0 ? speed[i]=0 : speed[i]=speed[i];
+        if(speed[i] < 0) {
+            speed[i] = -speed[i];
+            direction[i] = -direction[i];
+        }
+
+        speed[i] = min(speed[i], (float)1.0);
         motor[i]->drive(speed[i], direction[i]);
     }
 }
@@ -131,10 +128,10 @@ void Drive::drive(float rho, float theta = 0, float phi = 0) {                  
 //-----------------------------------------------------------------------------------------------------------------------------//
 
 void Drive::linear(float rho, float theta=0) {                                  // (rho, theta) = linear vector
-    theta < -180 ? theta = -180 : theta = theta;
-    theta > 180 ? theta = 180 : theta = theta;
-    rho < 0 ? rho = 0 : rho = rho;
-    rho > 1 ? rho = 1 : rho = rho;                              
+    theta = max(theta, (float)-180.0);
+    theta = min(theta, (float)180.0);
+    rho = max(rho, (float)0.0);
+    rho = min(rho, (float)1.0);                      
                                                                                 // Directional Quadrants
     if(theta >= -45 && theta <= 45) {                                               // All motors forward if theta is from -45deg - 45deg   
         for(int i=0; i<4; ++i) {
@@ -186,10 +183,10 @@ void Drive::linear(float rho, float theta=0) {                                  
 //----------------------------------------------------------------------------------------//
 
 void Drive::rotate(float rho, float phi) {
-    phi < -1 ? phi=-1 : phi=phi;
-    phi > 1 ? phi=1 : phi=phi;
-    rho < 0 ? rho=0 : rho=rho;
-    rho > 1 ? rho=1 : rho=rho;
+    rho = max(rho, (float)0.0);
+    rho = min(rho, (float)1.0);
+    phi = max(phi, (float)-1.0);
+    phi = min(phi, (float)1.0);
 
     if(phi > 0) {
         direction[0] = 1;
@@ -207,5 +204,13 @@ void Drive::rotate(float rho, float phi) {
     for(int i=0; i<4; ++i)
         speed[i] = rho*abs(phi);
 }
+
+
+
+Motor motorFL(D3, D12);
+Motor motorFR(D11, D4);
+Motor motorBR(D10, D8);
+Motor motorBL(D13, D2);
+Drive drive(motorFR, motorBR, motorBL, motorFL);
 
 #endif

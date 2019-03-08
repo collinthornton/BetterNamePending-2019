@@ -12,6 +12,7 @@
 #define WIFLY_H
 
 #include <mbed.h>
+#include <HC05.h>
 
 class Wifi {
 
@@ -21,21 +22,20 @@ class Wifi {
         int wifiInit(short);
         int wifiDisconnectHost(void);
         int wifiConnectPing(void);
-        void processHC05(void);
+        void transmit(const char* input);
 
-        void transmit(char* input);
-        void transmitBT(char* input);
+        void handleLossOfSignal(void);
+
+        bool connectEnabled = true;
 
     private:
         void inputWifi(void);
-        int processWifi(void);
-        void handleLossOfSignal(void);
         int processWifi(void);
 
         static void wifi_ISR(void);
         static Wifi* instance;
 
-        const float delay = .35;
+        const static float delay = .35;
         const char* SSID;
         const char* PHRASE;
         const char* COM_REMOTE;
@@ -52,18 +52,17 @@ class Wifi {
         Timer losTimer;
 
         Serial wifi;
-        Serial hc05;
 
         string wifiData;
         char wifiIn;
 
         bool firstDetection = true;
+        bool outputBT = false;
 };
 
-Serial wifi(D1, D0, 38400);
 
 Wifi::Wifi(PinName joinPin = D6, PinName connectedPin = D7, PinName connectPin = D5, int  baud = 38400) : 
-        joined(joinPin), connected(connectedPin), connect(connectPin), wifi(D1, D0, baud), hc05(PE_8, PE_7, baud) {
+        joined(joinPin), connected(connectedPin), connect(connectPin), wifi(D1, D0, baud) {
 
     instance = this;
     wifi.attach(&wifi_ISR);
@@ -75,7 +74,7 @@ Wifi::Wifi(PinName joinPin = D6, PinName connectedPin = D7, PinName connectPin =
     HOST_PORT = "5555";                        // Port 5555 for distribution server
     GET_PING = "GET /mercury2018/ping.php";    //! Apparently sends terminator char after string -- HTML doesn't understand
     FILE_NAME = "BetterNamePending";
-    BAUD = "38400";
+    BAUD = "9600";
     COMM_MATCH =  "13";                        // ASCII code for \r
     WIFI_RATE = "14";                          // 12 = default
 
@@ -225,26 +224,13 @@ int Wifi::wifiConnectPing(void) {
 
     return 0;
 }
-void Wifi::transmit(char* input) {
+void Wifi::transmit(const char* input) {
     wifi.printf("%s", input);
 }
-void Wifi::transmitBT(char* input) {
-    hc05.printf("%s", input);
-}
-void Wifi::processHC05(void) {
 
-    if(!hc05.readable()) return;
-    char btIn;
-
-    btIn = hc05.getc();
-    wifi.putc(btIn);
-    #ifdef ADJUST_HC05
-    pc.putc(btIn);
-    #endif
-}
 void Wifi::inputWifi(void) {
     wifiIn = wifi.getc();
-    hc05.putc(wifiIn);
+    if(outputBT) hc05.transmit(wifiIn);
 }
 int Wifi::processWifi(void) {
     if(!wifi.readable()) {
@@ -265,26 +251,26 @@ void Wifi::wifi_ISR(void) {
 
 
 void Wifi::handleLossOfSignal(void) {
-    if((!joined || !connected) && firstDetection) {
+    if((!joined || !connected) && firstDetection && connectEnabled) {
         losTimer.reset();
         losTimer.start();
         firstDetection = false;
     } else if((!joined || !connected) && !firstDetection) {
         if(losTimer.read() >= 1.5) {
             losTimer.stop();
-            if(!joined) {
-                hc05.printf("------| Network Timed Out |------\n");
-                while(!joined) { 
-                    wifiConfig();
+                if(!joined) {
+                    hc05.transmit("------| Network Timed Out |------\n");
+                    while(!joined) { 
+                        wifiConfig();
+                    }
+                    hc05.transmit("------| Timeout Released |------\n");
                 }
-                hc05.printf("------| Timeout Released |------\n");
-            }
-            if(!connected) {
-                hc05.printf("------| Connection Timed Out |------\n");
-                while(!connected) { 
-                    wifiInit();
-                }
-                hc05.printf("------| Timeout Released |------\n");
+                if(!connected) {
+                    hc05.transmit("------| Connection Timed Out |------\n");
+                    while(!connected) { 
+                        wifiInit();
+                    }
+                    hc05.transmit("------| Timeout Released |------\n");
             }
             firstDetection = true;
         } else if(joined && connected) {
@@ -295,6 +281,13 @@ void Wifi::handleLossOfSignal(void) {
 
     return;
 }
+
+//-------------------------------------------------------------------------------------------------//
+
+Wifi wifi = Wifi();                         // Global declaration of Wifi object!
+Wifi * Wifi::instance;
+
+//-------------------------------------------------------------------------------------------------//
 
 #endif
 

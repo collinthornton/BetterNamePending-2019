@@ -3,17 +3,14 @@
 
 #include <mbed.h>
 #include <string>
-#include <WiFly.h>
+
+#include "WiFly.h"
+#include "HC05.h"
 #include "Motor.h"
 
-#ifndef ADJUST_HC05
 Serial pc(USBTX, USBRX, 38400);
-#endif
 
 string pcData;
-Motor motor(D3, D12);
-bool direction;
-float speed;
 
 bool printSonar=true;
 
@@ -23,8 +20,8 @@ char inputPC() {
     pcIn = pc.getc();
     //wifi.putc(pcIn);
     #ifdef ADJUST_HC05
-    hc05.putc(pcIn);
-    pc.putc(pcIn);
+    hc05.transmit(pcIn);
+    pc.transmit(pcIn);
     #endif
 
     return pcIn;
@@ -34,43 +31,80 @@ int processPC() {
 
     while(pc.readable()) {
         char input = inputPC();
+        char *out="0";
         pcData += input;
 
         switch(input) {
             case '\r':
-                hc05.printf("%s", pcData.c_str());
+
+                hc05.transmit(pcData.c_str());
                 pcData.clear();
                 return 1;
             case '~':
-                if(wifiConnectPing() < 0) hc05.printf("Error Pinging: Not Connected To Host\n");
-                else hc05.printf("\nPing Sent\n"); 
+                if(wifi.wifiConnectPing() < 0) hc05.transmit("Error Pinging: Not Connected To Host\n");
+                else hc05.transmit("\nPing Sent\n"); 
                 pcData.clear();
                 return 1;
             case '@':
-                connect = !connect;
-                hc05.printf("\n%d\n", connect);
+                wifi.connectEnabled = !wifi.connectEnabled;
+                __itoa(wifi.connectEnabled, out, 10);
+                hc05.transmit("\nout\n");
                 pcData.clear();
                 return 1;
             case 'w':
-                direction == 0 ? speed+=.1 : speed-=.1;
-                if(speed > 1) speed = 1;
-                else if(speed < 0) {
-                    direction == 0 ? direction=1 : direction=0;
-                    speed = -speed;
-                }
-                pc.printf("%3.2f, %d\n", speed, direction);
-                motor.drive(speed, direction);
+                speed += .1;
+
+                speed = min(speed, 1.0);
+                speed = max(speed, 0.0);
+                
+                drive.drive(speed, theta, phi);
+                pc.printf("%f %f %f\n", speed, theta, phi);
                 return 1;
             case 's':
-                direction == 0 ? speed-=.1 : speed+=.1;
-                if(speed > 1) speed = 1;
-                else if(speed < 0) {
-                    direction == 0 ? direction=1 : direction=0;
-                    speed = -speed;
-                }
-                pc.printf("%3.2f, %d\n", speed, direction);
-                motor.drive(speed, direction);
+                speed -= .1;
+
+                speed = min(speed, 1.0);
+                speed = max(speed, 0.0);
+
+                drive.drive(speed, theta, phi);
+                pc.printf("%f %f %f\n", speed, theta, phi);
                 return 1;
+            case 'd':
+                theta += 15;
+
+                theta = min(theta, 180.0);
+                theta = max(theta, -180.0);
+
+                drive.drive(speed, theta, phi);
+                pc.printf("%f %f %f\n", speed, theta, phi);
+
+                return 1;
+            case 'a':
+                theta -= 15;
+
+                theta = min(theta, 180.0);
+                theta = max(theta, -180.0);
+
+                drive.drive(speed, theta, phi);
+                pc.printf("%f %f %f\n", speed, theta, phi);
+                return 1;
+            case 'q':
+                phi -= .1;
+
+                phi = min(phi, 1.0);
+                phi = max(phi, -1.0);
+
+                drive.drive(speed, theta, phi);
+                pc.printf("%f %f %f\n", speed, theta, phi);
+                return 1;
+            case 'e':
+                phi += .1;
+
+                phi = min(phi, 1.0);
+                phi = max(phi, -1.0); 
+
+                drive.drive(speed, theta, phi);
+                pc.printf("%f %f %f\n", speed, theta, phi);
             case 'p':
                 printSonar = !printSonar;
                 return 1;

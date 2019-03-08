@@ -14,6 +14,10 @@
 #ifndef PING_H
 #define PING_H
 
+#define SONAR_NUM 1  
+#define MAX_DISTANCE 25                                   // Adjust to indicate total number of ultrasonic sensors. 
+#define ENABLE_SONAR_INTERRUPT                          // Comment this line to enable single pin sonar, uncomment to increase speed by about 200x
+
 #include <mbed.h>
 #include <SerialPC.h>
 
@@ -233,6 +237,7 @@ void Ping::static_ISR0(void) {
     if(Ping::instance[0] != NULL)
         Ping::instance[0]->ISR();
 }
+/*
 void Ping::static_ISR1(void) {
     if(Ping::instance[1] != NULL)
         Ping::instance[1]->ISR();
@@ -265,6 +270,7 @@ void Ping::static_ISR8(void) {
     if(instance[8] != NULL)
         instance[8]->ISR();
 }
+*/
 void Ping::ISR(void) {
     pingTimer.stop();
     pingUpdatedShared = true;
@@ -272,5 +278,32 @@ void Ping::ISR(void) {
     pingTimer.reset();
 }
 #endif
+
+//-----------------------------------------------------------------------//
+
+Ping sonar[SONAR_NUM] = {
+  #ifdef ENABLE_SONAR_INTERRUPT 
+  Ping(D8, D9, MAX_DISTANCE)                // Declare ultrasonic sensors here for interrupt use
+  #else
+  Ping(D8, MAX_DISTANCE)                    // Declare ultrasonic sensors here for single pin use
+  #endif
+};
+
+Ping * Ping::instance[SONAR_NUM];         // This fills declares an array the same size as the number of Sonar objects
+                                          // it is used for the interrupt functions
+Timer sonarTimer;
+int *ping;                                  // Variable to track distance in cm for each ultrasonic sensor
+
+void sonar_timer() {                        // Ping all Sonar objects and reset the sonar timer
+  for(unsigned int i=0; i<SONAR_NUM; ++i)
+    ping[i] = sonar[i].ping_cm(MAX_DISTANCE);
+  sonarTimer.reset();
+}
+
+/*void sonar_timer() {
+  ping = sonar[0].ping_cm_all(MAX_DISTANCE);
+}*/
+
+//---------------------------------------------------------------------//
 
 #endif
