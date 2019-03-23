@@ -37,6 +37,7 @@ class Wifi {
 
         const static float delay = .35;
         const char* SSID;
+        const char* AUTH;
         const char* PHRASE;
         const char* COM_REMOTE;
         const char* HOST_IP;
@@ -57,7 +58,7 @@ class Wifi {
         char wifiIn;
 
         bool firstDetection = true;
-        bool outputBT = false;
+        bool outputBT = true;
 };
 
 
@@ -68,13 +69,14 @@ Wifi::Wifi(PinName joinPin = D6, PinName connectedPin = D7, PinName connectPin =
     wifi.attach(&wifi_ISR);
 
     SSID = "Warring$Turtles$2.0";
+    AUTH = "4";
     PHRASE = "12345678";
     COM_REMOTE = "0";
-    HOST_IP = "206.189.66.241";
+    HOST_IP = "206.189.66.241";                // 206.189.66.241 
     HOST_PORT = "5555";                        // Port 5555 for distribution server
     GET_PING = "GET /mercury2018/ping.php";    //! Apparently sends terminator char after string -- HTML doesn't understand
     FILE_NAME = "BetterNamePending";
-    BAUD = "9600";
+    BAUD = "38400";
     COMM_MATCH =  "13";                        // ASCII code for \r
     WIFI_RATE = "14";                          // 12 = default
 
@@ -103,6 +105,8 @@ void Wifi::wifiConfig(bool loadFile = true) {
     wait(delay);
     wifi.printf("set ip remote %s\r", HOST_PORT);
     wait(delay);
+    wifi.printf("set wlan auth %s\r", AUTH);
+    wait(delay);
     wifi.printf("set wlan ssid %s\r", SSID);
     wait(1);
     wifi.printf("set wlan phrase %s\r", PHRASE);
@@ -123,11 +127,11 @@ void Wifi::wifiConfig(bool loadFile = true) {
     wait(delay);
     wifi.printf("open\r");
 
-//  wifi.printf("save\r");
-//  wait(delay);
-//  wifi.printf("save %s\r", FILE_NAME);
-//  wait(delay);
-//  wifi.printf("reboot\r");
+    wifi.printf("save\r");
+    wait(delay);
+    wifi.printf("save %s\r", FILE_NAME);
+    wait(delay);
+    wifi.printf("reboot\r");
 
     return;
 }

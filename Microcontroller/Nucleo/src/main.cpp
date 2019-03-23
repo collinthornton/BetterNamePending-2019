@@ -11,15 +11,15 @@ int main()
 
   pcData.resize(128);
 
-  //wifi.wifiConfig(false);                               // Set to true to load from saved -- set to false to change paramters
-  //while(wifi.wifiInit() < 0) {                          // Hang on failure to connect to server
-  //  pc.printf("UNABLE TO CONNECT TO SERVER\n");
-  //  hc05.transmit("UNABLE TO CONNECT TO SERVER\n");
-  //}                                    
+  wifi.wifiConfig(false);                               // Set to true to load from saved -- set to false to change paramters
+  while(wifi.wifiInit() < 0) {                          // Hang on failure to connect to server
+    pc.printf("UNABLE TO CONNECT TO SERVER\n");
+    hc05.transmit("UNABLE TO CONNECT TO SERVER\n");
+  }                                    
   //wifi.wifiConnectPing();
 
   sonarTimer.start();
-  //wifiTimer.start();
+  wifiTimer.start();
 
   while (1)
   {
@@ -34,20 +34,20 @@ int main()
     /*if(sonarTimer.read_us() >= 15000 && printSonar == true) {               // Ping the ultrasonic sensors if 15 ms as elapsed
       sonar_timer();                                                        // Note that this value is calibrated for the MAX_DISTANCE that has been set
       pc.printf("%i %i\n", ping[0], dt.read_us());                          // If MAX_DISTANCE is increased, this must also be increased
-    }
-
+    }*/   
     
-    if(wifiTimer.read() >= .033) {                                //! .075 This is where the WiFLY crashes. If .075 is decreased, the board will crash. 
-      char *outPing="0", *outTime="0", *out="0";
+    if(wifiTimer.read() >= .03) {                                //! .075 This is where the WiFLY crashes. If .075 is decreased, the board will crash. 
+      char *outPing, *outTime, *out = "0";
 
-      __itoa(ping[0], outPing, 10);
-      __itoa(dt.read_us(), outTime, 10);
-      strcat(outPing, outTime);
-      out = strcat(out, "\r");
+      __itoa(dt.read_us(), out, 10);
+      //__itoa(dt.read_us(), outTime, 10);
+      //out = strcat(outPing, outTime);
+      out = strcat(out, "\r\n");
 
-      wifi.transmit(out);                               // Print the output of the sonar ping and loop time. 
+      //wifi.transmit(out);                               // Print the output of the sonar ping and loop time. 
       wifiTimer.reset();
-    }*/
+      wifi.transmit(out);
+    }
     
 
     dt.reset();

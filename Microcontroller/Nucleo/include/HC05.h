@@ -44,10 +44,10 @@ Bluetooth::Bluetooth(PinName tx = PE_8, PinName rx = PE_7, int baud = 38400) : h
 void Bluetooth::transmit(string &out) {
     hc05.printf("%s", out);
 }
-void Bluetooth::transmit(char out) {
+void Bluetooth::transmit(const char* out) {
     hc05.printf("%s", out);
 }
-void Bluetooth::transmit(const char* out) {
+void Bluetooth::transmit(char out) {
     hc05.printf("%c", out);
 }
 void Bluetooth::inputBT(void) {
