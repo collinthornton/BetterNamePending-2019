@@ -1,7 +1,6 @@
 #ifndef HC05_H
 #define HC05_H
 
-#include <mbed.h>
 #include <string>
 
 #include "Drive.h"

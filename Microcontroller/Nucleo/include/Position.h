@@ -19,10 +19,8 @@ class Position {
         struct location {
             short driveAxis;                                // 0 = Y, 1 = X
             short driveDir;                                 // 0 = forward, 1 = backward
-            float front;
-            float right;
-            float back;
-            float left;
+            float X;
+            float Y;
             float heading;                                  // Heading as compared to walls
         };
         location location;
@@ -39,6 +37,8 @@ class Position {
         string nextAxis      = "UNKNOWN";                   // Possible states: "UNKNOWN", "X", "Y"
         string nextDirection = "UNKNOWN";                   // Possible states: "UNKOWN", "FORWARD", "REVERSE"
 
+       // short ROBOT_WIDTH = 46, HALL_WIDTH = 61, SPACE = HALL_WIDTH-ROBOT_WIDTH;
+
         bool st[8] = {0,0,0,0,0,0,0}, side[4] = {0,0,0,0};
         Timer time;
 
@@ -51,6 +51,7 @@ class Position {
                     Back:  sonar[4] and sonar[5]
                     Left:  sonar[6] and sonar[7]
             */
+        short unknownCounter = 0;
 };
 
 Position::Position() {
@@ -179,61 +180,85 @@ int Position::findState(void) {
 int Position::findPosition(void) {
     findState();
 
-    float front = 0, right = 0, back = 0, left = 0, heading = 0;
+    float front = 0, right = 0, back = 0, left = 0, heading = 0, X = 0, Y = 0;
     short driveDir = 0, driveAxis = 0;
 
     if(state == "UNKNOWN") {
-        location.front = 0;
-        location.right = 0;
-        location.back  = 0;
-        location.left  = 0;
-        location.heading = 0;
+        ++unknownCounter;
+        if(unknownCounter >= 5) {
+            location.X = 0;
+            location.Y = 0;
+            location.heading = 0;
+        }
         return -2;
     }
-
-    axis == "X" ? location.driveAxis = 0 : location.driveAxis = 1;
-    direction == "FORWARD" ? location.driveDir = 0 : location.driveDir = 1;
-
-    if(state == "HALL" || state == "CORNER") {
-        axis == "X" ? driveAxis = 0 : driveAxis = 1;
-        direction == "FORWARD" ? driveDir = 0 : driveDir = 1;
-        front = (distance[0] + distance[1]) / 2;
-        back  = (distance[4] + distance[5]) / 2;
-
-        right = (distance[2] + distance[3]) / 2;
-        left  = (distance[6] + distance[7]) / 2;
-
-        if(front < 0) front = MAX_DISTANCE;
-        if(right < 0) right = MAX_DISTANCE;  
-        if(back  < 0) back  = MAX_DISTANCE;                       // MAX_DISTANCE is defined in Ping.h
-        if(left  < 0) left  = MAX_DISTANCE;
+    unknownCounter = 0;
+   
+    front = (distance[0] + distance[1]) / 2;                        // Define the side distance measurements as the average of both distance measurements for that side
+    back  = (distance[4] + distance[5]) / 2;                        //  and override as needed below. 
+    right = (distance[2] + distance[3]) / 2;
+    left  = (distance[6] + distance[7]) / 2;
+    
+    if(state == "TRANSITION") {
+        if(previousState == "HALL") {
+            if(axis == "Y" && direction == "FORWARD") {
+                if(!st[2]) right       = distance[3];
+                else if(!st[7]) left   = distance[6];
+            }
+            else if(axis == "Y" && direction == "REVERSE") {
+                if(!st[3]) right       = distance[2];
+                else if(!st[6]) left   = distance[7];
+            }
+            else if(axis == "X" && direction == "FORWARD") {
+                if(!st[1]) front       = distance[0];
+                else if(!st[4]) back   = distance[5];
+            }
+            else if(axis == "X" && direction == "REVERSE") {
+                if(!st[0]) front       = distance[1];
+                else if(!st[5]) back   = distance[4];
+            }
+        }
+        else if(previousState == "CORNER") {
+            if(axis == "Y" && direction == "FORWARD") {
+                if(st[7]) left         = distance[7];
+                else if(st[2]) right   = distance[2];
+            }
+            else if(axis == "Y" && direction == "REVERSE") {
+                if(st[6]) left         = distance[6];
+                else if(st[3]) right   = distance[3];
+            }
+            else if(axis == "X" && direction == "FORWARD") {
+                if(st[1]) front        = distance[1];
+                else if(st[4]) back    = distance[4];
+            }
+            else if(axis == "X" && direction == "REVERSE") {
+                if(st[0]) front        = distance[0];
+                else if(st[5]) back    = distance[5];
+            }
+        }
     }
-    else if(state == "TRANSITION") {                //! HERE
 
-    }
+    if(front < 0) front = MAX_DISTANCE;
+    if(right < 0) right = MAX_DISTANCE;  
+    if(back  < 0) back  = MAX_DISTANCE;                                         // MAX_DISTANCE is defined in Ping.h
+    if(left  < 0) left  = MAX_DISTANCE;
+
+    X = right - left;
+    Y = front - back;
+
+    axis == "X" ? location.driveAxis = 0 : location.driveAxis = 1;                  // axis = "X", driveAxis = 0, else driveAxis = 1;
+    direction == "FORWARD" ? location.driveDir = 0 : location.driveDir = 1;         // direction = "FOR..", driveDir = 0, else driveDir = 0;
 
     location.driveDir   = driveDir;
     location.driveAxis  = driveAxis;
-    location.front      = front;
-    location.right      = right;
-    location.back       = back;
-    location.left       = left;
+    location.X          = X;
+    location.Y          = Y;
     location.heading    = heading;
 
     return 1;
 }
 string Position::toString(void) {
     string output;
-/*
-    output.append(state);                           output.append("\n");
-    output.append(to_string(location.driveAxis));   output.append("\n");
-    output.append(to_string(location.driveDir));    output.append("\n");
-    output.append(to_string(location.front));       output.append("\n");
-    output.append(to_string(location.right));       output.append("\n");
-    output.append(to_string(location.back));        output.append("\n");
-    output.append(to_string(location.left));        output.append("\n");
-    output.append(to_string(location.heading));     output.append("\n");
-*/
 
     for(int i=0; i<SONAR_NUM; ++i) {
         char distanceStr[4];
@@ -251,13 +276,20 @@ string Position::toString(void) {
     for(int i=0; i<SONAR_NUM; ++i) {
         output += to_string(st[i]) + ' ';
     }
-    
+
+    output += to_string(location.driveAxis) + ' ';
+    output += to_string(location.driveDir)  + ' ';
+    output += to_string(location.X)         + ' ';
+    output += to_string(location.Y)         + ' ';
+    output += to_string(location.heading)   + ' ';
+
     return output;
 }
 
 void Position::positionTimer(void) {
     if(time.read_us() > 15000) {
         findState();
+        findPosition();
         time.reset();
     }
 }

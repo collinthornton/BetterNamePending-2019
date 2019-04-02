@@ -1,7 +1,6 @@
 #ifndef PC_SERIAL_H
 #define PC_SERIAL_H
 
-#include <mbed.h>
 #include <string>
 
 #include "WiFly.h"
