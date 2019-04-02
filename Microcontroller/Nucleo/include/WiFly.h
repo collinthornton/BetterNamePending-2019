@@ -22,7 +22,9 @@ class Wifi {
         int wifiInit(short);
         int wifiDisconnectHost(void);
         int wifiConnectPing(void);
-        void transmit(const char* input);
+        void transmit(string input, bool cr);        
+        void transmit(const char* input, bool cr);
+        void transmit(char input, bool cr);
 
         void handleLossOfSignal(void);
 
@@ -35,7 +37,7 @@ class Wifi {
         static void wifi_ISR(void);
         static Wifi* instance;
 
-        const static float delay = .35;
+        float delay;
         const char* SSID;
         const char* AUTH;
         const char* PHRASE;
@@ -46,6 +48,8 @@ class Wifi {
         const char* FILE_NAME;
         const char* BAUD;
         const char* COMM_MATCH;
+        const char* COMM_TIME;
+        const char* COMM_SIZE;
         const char* WIFI_RATE;
 
         InterruptIn joined, connected;      // D6, D7
@@ -68,17 +72,21 @@ Wifi::Wifi(PinName joinPin = D6, PinName connectedPin = D7, PinName connectPin =
     instance = this;
     wifi.attach(&wifi_ISR);
 
-    SSID = "Warring$Turtles$2.0";
-    AUTH = "4";
-    PHRASE = "12345678";
-    COM_REMOTE = "0";
-    HOST_IP = "206.189.66.241";                // 206.189.66.241 
-    HOST_PORT = "5555";                        // Port 5555 for distribution server
-    GET_PING = "GET /mercury2018/ping.php";    //! Apparently sends terminator char after string -- HTML doesn't understand
-    FILE_NAME = "BetterNamePending";
-    BAUD = "38400";
-    COMM_MATCH =  "13";                        // ASCII code for \r
-    WIFI_RATE = "14";                          // 12 = default
+    delay       = 0.35;
+    SSID        = "MERCURY";
+    AUTH        = "0";
+    PHRASE      = "12345678";
+    COM_REMOTE  = "0";
+    HOST_IP     = "206.189.66.241";                // 206.189.66.241 
+    HOST_PORT   = "5555";                        // Port 5555 for distribution server
+    GET_PING    = "GET /mercury2018/ping.php";    //! Apparently sends terminator char after string -- HTML doesn't understand
+    FILE_NAME   = "BetterNamePending";
+    BAUD        = "38400";
+    COMM_MATCH  = "0x0D";                        // ASCII code for \r = 0x0D
+    COMM_SIZE   = "1460";
+    COMM_TIME   = "1000";
+    WIFI_RATE   = "12";                          // 12 = default
+    
 
     wifiData.resize(128);
 }
@@ -108,10 +116,12 @@ void Wifi::wifiConfig(bool loadFile = true) {
     wifi.printf("set wlan auth %s\r", AUTH);
     wait(delay);
     wifi.printf("set wlan ssid %s\r", SSID);
-    wait(1);
+    wait(delay);
     wifi.printf("set wlan phrase %s\r", PHRASE);
-    wait(1);
+    wait(delay);
     wifi.printf("set wlan join 1\r");
+    wait(delay);
+    wifi.printf("\r");
     wait(delay);
     wifi.printf("set wlan channel 0\r");
     wait(delay);
@@ -119,16 +129,24 @@ void Wifi::wifiConfig(bool loadFile = true) {
     wait(delay);
     wifi.printf("set sys iofunc 0x70\r");
     wait(delay);
+    wifi.printf("set uart flow 1\r");
+    wait(delay);
+    wifi.printf("set comm size %s\r", COMM_SIZE);
+    wait(delay);
+    wifi.printf("set comm time %s\r", COMM_TIME);
+    wait(delay);
     wifi.printf("set uart baud %s\r", BAUD);
     wait(delay);
     wifi.printf("set wlan rate %s\r", WIFI_RATE);
     wait(delay);
     wifi.printf("set comm match %s\r", COMM_MATCH);
     wait(delay);
-    wifi.printf("open\r");
+//    wifi.printf("join\r");
+//    wait(delay);
+//   wifi.printf("save\r");
+//    wait(delay);
+//    wifi.printf("open\r"); //-------------------------------------//
 
-    wifi.printf("save\r");
-    wait(delay);
     wifi.printf("save %s\r", FILE_NAME);
     wait(delay);
     wifi.printf("reboot\r");
@@ -228,8 +246,20 @@ int Wifi::wifiConnectPing(void) {
 
     return 0;
 }
-void Wifi::transmit(const char* input) {
+void Wifi::transmit(const char* input, bool cr = true) {
     wifi.printf("%s", input);
+    if(cr)
+        wifi.printf("\r");
+}
+void Wifi::transmit(string input, bool cr = true) {
+    wifi.printf("%s", input.c_str());
+    if(cr)
+        wifi.printf("\r");
+}
+void Wifi::transmit(char input, bool cr = true) {
+    wifi.printf("%c", input);
+    if(cr)
+        wifi.printf("\r");
 }
 
 void Wifi::inputWifi(void) {
@@ -265,14 +295,14 @@ void Wifi::handleLossOfSignal(void) {
                 if(!joined) {
                     hc05.transmit("------| Network Timed Out |------\n");
                     while(!joined) { 
-                        wifiConfig();
+                        //wifiConfig();
                     }
                     hc05.transmit("------| Timeout Released |------\n");
                 }
                 if(!connected) {
                     hc05.transmit("------| Connection Timed Out |------\n");
                     while(!connected) { 
-                        wifiInit();
+                        //wifiInit();
                     }
                     hc05.transmit("------| Timeout Released |------\n");
             }

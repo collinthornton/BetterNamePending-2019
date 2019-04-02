@@ -9,6 +9,7 @@
 
 bool direction;
 double speed = 0, theta = 0, phi = 0;
+bool controlMotors = false;
 
 
 class Bluetooth {
@@ -59,6 +60,7 @@ void Bluetooth::processBT(void) {
     }
     inputBT();
     switch (btIn) {
+        if(controlMotors) {
             case 'w':
                 speed += .1;
 
@@ -113,6 +115,7 @@ void Bluetooth::processBT(void) {
 
                 drive.drive(speed, theta, phi);
                 hc05.printf("%f %f %f\n", speed, theta, phi);
+        }
     }
 }
 void Bluetooth::bt_ISR(void) {

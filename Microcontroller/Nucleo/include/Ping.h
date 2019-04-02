@@ -14,12 +14,11 @@
 #ifndef PING_H
 #define PING_H
 
-#define SONAR_NUM 1  
+#define SONAR_NUM 8  
 #define MAX_DISTANCE 25                                   // Adjust to indicate total number of ultrasonic sensors. 
 #define ENABLE_SONAR_INTERRUPT                          // Comment this line to enable single pin sonar, uncomment to increase speed by about 200x
 
 #include <mbed.h>
-#include <SerialPC.h>
 
 // Shouldn't need to change these values unless you have a specific need to do so.
 #define MAX_SENSOR_DISTANCE 500 // Maximum sensor distance can be as high as 500cm, no reason to wait for ping longer than sound takes to travel this distance and back. Default=500
@@ -27,43 +26,43 @@
 #define ROUNDING_ENABLED false  // Set to "true" to enable distance rounding which also adds 64 bytes to binary size. Default=false
 
 // Probably shouldn't change these values unless you really know what you're doing.
-#define NO_ECHO 0               // Value returned if there's no ping echo within the specified MAX_SENSOR_DISTANCE or max_cm_distance. Default=0
+#define NO_ECHO -1               // Value returned if there's no ping echo within the specified MAX_SENSOR_DISTANCE or max_cm_distance. Default=0
 #define MAX_SENSOR_DELAY 5800   // Maximum uS it takes for sensor to start the ping. Default=5800
+
 #ifndef ENABLE_SONAR_INTERRUPT
 #define PING_OVERHEAD 5         // Ping overhead in microseconds (uS). Default=5
 #else
 #define PING_OVERHEAD 150       //! Remember to calibrate PING_OVERHEAD for device
 #endif
+
 #define PING_TIMER_OVERHEAD 13  // Ping timer overhead in microseconds (uS). Default=13
                                 // Conversion from uS to distance (round result to nearest cm or inch).
-#define PingConvert(echoTime, conversionFactor) (max(((unsigned int)echoTime + conversionFactor / 2) / conversionFactor, (echoTime ? 1 : 0)))
+#define PingConvert(echoTime, conversionFactor) (max((( int)echoTime + conversionFactor / 2) / conversionFactor, (echoTime ? 1 : 0)))
 
 class Ping
 {
   public:
     #ifndef ENABLE_SONAR_INTERRUPT
-    Ping(PinName singlePin, unsigned int max_cm_distance = MAX_SENSOR_DISTANCE);
+    Ping(PinName singlePin,  int max_cm_distance = MAX_SENSOR_DISTANCE);
     DigitalInOut pin;
     #else
-    Ping(PinName echoPin, PinName triggerPin, unsigned int max_cm_dinstance = MAX_SENSOR_DISTANCE);
+    Ping(PinName echoPin, PinName triggerPin,  int max_cm_dinstance = MAX_SENSOR_DISTANCE);
     DigitalOut trigger;
     InterruptIn echo;
     #endif
 
     static Ping* instance[SONAR_NUM];
 
-    unsigned int ping(unsigned int max_cm_distance = 0);
-    unsigned int ping_cm(unsigned int max_cm_distance = 0);
-    static int* ping_cm_all(unsigned int max_cm_distance = 0);
-    static int ping_all(unsigned int max_cm_distance = 0);
+    int ping( int max_cm_distance = 0);
+    int ping_cm( int max_cm_distance = 0);
 
     Timer pingTimer;
     static Timer triggerTimer;
-    unsigned int _maxEchoTime;
+    int _maxEchoTime;
     long _max_time;
 
   private:
-    void set_max_distance(unsigned int max_cm_distance);
+    void set_max_distance( int max_cm_distance);
     bool ping_trigger();
     static bool ping_trigger_all();
 
@@ -82,21 +81,20 @@ class Ping
     static void static_ISR5(void);
     static void static_ISR6(void);
     static void static_ISR7(void);
-    static void static_ISR8(void);
 
-    volatile unsigned int tempTime;
+    volatile  int tempTime;
     volatile bool pingUpdatedShared = false;
     bool pingUpdated = false;
     #else
     static void set_input();
     static void set_output();
 
-    unsigned int tempTime;
+     int tempTime;
     #endif
 };
 
 #ifndef ENABLE_SONAR_INTERRUPT
-Ping::Ping(PinName singlePin, unsigned int max_cm_distance) : pin(singlePin)
+Ping::Ping(PinName singlePin,  int max_cm_distance) : pin(singlePin)
 {
     set_max_distance(max_cm_distance);
     for(int i=0; i<SONAR_NUM; ++i) {
@@ -105,33 +103,58 @@ Ping::Ping(PinName singlePin, unsigned int max_cm_distance) : pin(singlePin)
     }
 }
 #else
-Ping::Ping(PinName triggerPin, PinName echoPin, unsigned int max_cm_distance) : echo(echoPin), trigger(triggerPin) {
+Ping::Ping(PinName echoPin, PinName triggerPin,  int max_cm_distance) : echo(echoPin), trigger(triggerPin) {
     switch(echoPin) {
         case D9:
             echo.fall(&static_ISR0);
             instance[0] = this;
             break;
+        case PE_3:
+            echo.fall(&static_ISR1);
+            instance[1] = this;
+            break;
+        case A5:
+            echo.fall(&static_ISR2);
+            instance[2] = this;
+            break;
+        case PE_5:
+            echo.fall(&static_ISR3);
+            instance[3] = this;
+            break;
+        case PE_2:
+            echo.fall(&static_ISR4);
+            instance[4] = this;
+            break;
+        case PA_0:
+            echo.fall(&static_ISR5);
+            instance[5] = this;
+            break;
+        case PF_7:
+            echo.fall(&static_ISR6);
+            instance[6] = this;
+            break;
+        case PF_9:
+            echo.fall(&static_ISR7);
+            instance[7] = this;
+            break;
         default:
-            while(1) {            
-                pc.printf("Please enter a correct pin name for the sonar echo interrupt\n");
-            }     //! Function will enter infinite loop if wrong pin name is given for echoPin
-            return;
+            break;
     }
 
     set_max_distance(max_cm_distance);
 }
 #endif
 
-void Ping::set_max_distance(unsigned int max_cm_distance)
+void Ping::set_max_distance( int max_cm_distance)
 {
 #if ROUNDING_ENABLED == false
-    _maxEchoTime = min(max_cm_distance + 1, (unsigned int)MAX_SENSOR_DISTANCE + 1) * US_ROUNDTRIP_CM;                   // Calculate the maximum distance in uS (no rounding).
+    _maxEchoTime = min(max_cm_distance + 1, ( int)MAX_SENSOR_DISTANCE + 1) * US_ROUNDTRIP_CM;                   // Calculate the maximum distance in uS (no rounding).
 #else
-    _maxEchoTime = min(max_cm_distance, (unsigned int)MAX_SENSOR_DISTANCE) * US_ROUNDTRIP_CM + (US_ROUNDTRIP_CM / 2);   // Calculate the maximum distance in uS.
+    _maxEchoTime = min(max_cm_distance, (int)MAX_SENSOR_DISTANCE) * US_ROUNDTRIP_CM + (US_ROUNDTRIP_CM / 2);   // Calculate the maximum distance in uS.
 #endif
 }
 
-unsigned int Ping::ping(unsigned int max_cm_distance)
+ int Ping::ping(int max_cm_distance)
 {
 
     if (max_cm_distance > 0)
@@ -163,9 +186,9 @@ unsigned int Ping::ping(unsigned int max_cm_distance)
 
 }
 
-unsigned int Ping::ping_cm(unsigned int max_cm_distance)
+int Ping::ping_cm( int max_cm_distance)
 {
-    unsigned int echoTime;
+    int echoTime;
     #ifndef ENABLE_SONAR_INTERRUPT
     echoTime = ping(max_cm_distance);                       // Calls the ping method and returns with the ping echo distance in uS.
     #else
@@ -237,40 +260,35 @@ void Ping::static_ISR0(void) {
     if(Ping::instance[0] != NULL)
         Ping::instance[0]->ISR();
 }
-/*
 void Ping::static_ISR1(void) {
     if(Ping::instance[1] != NULL)
         Ping::instance[1]->ISR();
 }
 void Ping::static_ISR2(void) {
-    if(instance[2] != NULL)
-        instance[2]->ISR();
+    if(Ping::instance[2] != NULL)
+        Ping::instance[2]->ISR();
 }
 void Ping::static_ISR3(void) {
-    if(instance[3] != NULL)
-        instance[3]->ISR();
+    if(Ping::instance[3] != NULL)
+        Ping::instance[3]->ISR();
 }
 void Ping::static_ISR4(void) {
-    if(instance[4] != NULL)
-        instance[4]->ISR();
+    if(Ping::instance[4] != NULL)
+        Ping::instance[4]->ISR();
 }
 void Ping::static_ISR5(void) {
-    if(instance[5] != NULL)
-        instance[5]->ISR();
+    if(Ping::instance[5] != NULL)
+        Ping::instance[5]->ISR();
 }
 void Ping::static_ISR6(void) {
-    if(instance[6] != NULL)
-        instance[6]->ISR();
+    if(Ping::instance[6] != NULL)
+        Ping::instance[6]->ISR();
 }
 void Ping::static_ISR7(void) {
-    if(instance[7] != NULL)
-        instance[7]->ISR();
+    if(Ping::instance[7] != NULL)
+        Ping::instance[7]->ISR();
 }
-void Ping::static_ISR8(void) {
-    if(instance[8] != NULL)
-        instance[8]->ISR();
-}
-*/
+
 void Ping::ISR(void) {
     pingTimer.stop();
     pingUpdatedShared = true;
@@ -283,9 +301,23 @@ void Ping::ISR(void) {
 
 Ping sonar[SONAR_NUM] = {
   #ifdef ENABLE_SONAR_INTERRUPT 
-  Ping(D8, D9, MAX_DISTANCE)                // Declare ultrasonic sensors here for interrupt use
+  Ping(D9, A0, MAX_DISTANCE),                // Declare ultrasonic sensors here for interrupt use
+  Ping(PE_3, A2, MAX_DISTANCE),
+  Ping(A5, A4, MAX_DISTANCE),
+  Ping(PE_5, PF_2, MAX_DISTANCE),
+  Ping(PE_2, PE_12, MAX_DISTANCE),
+  Ping(PA_0, PE_15, MAX_DISTANCE),
+  Ping(PF_7, PD_0, MAX_DISTANCE),
+  Ping(PF_9, PD_1, MAX_DISTANCE)
   #else
-  Ping(D8, MAX_DISTANCE)                    // Declare ultrasonic sensors here for single pin use
+  Ping(D9, MAX_DISTANCE)                    // Declare ultrasonic sensors here for single pin use
+  Ping(A1, MAX_DISTANCE),
+  Ping(A5, MAX_DISTANCE),
+  Ping(PE_5, MAX_DISTANCE),
+  Ping(PE_2, MAX_DISTANCE),
+  Ping(PA_0, MAX_DISTANCE),
+  Ping(PF_7, MAX_DISTANCE),
+  Ping(PF_9, MAX_DISTANCE)
   #endif
 };
 
@@ -295,7 +327,7 @@ Timer sonarTimer;
 int *ping;                                  // Variable to track distance in cm for each ultrasonic sensor
 
 void sonar_timer() {                        // Ping all Sonar objects and reset the sonar timer
-  for(unsigned int i=0; i<SONAR_NUM; ++i)
+  for( int i=0; i<SONAR_NUM; ++i)
     ping[i] = sonar[i].ping_cm(MAX_DISTANCE);
   sonarTimer.reset();
 }
