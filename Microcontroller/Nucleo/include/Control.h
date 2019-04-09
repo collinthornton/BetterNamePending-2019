@@ -19,11 +19,11 @@ class Control {
         Drive drive   = Drive(motorFR, motorBR, motorBL, motorFL);
 
     private:
-        PID X       = PID(1, 0, 0);
-        PID Y       = PID(1, 0, 0);
-        PID heading = PID(1, 0, 0);
+        PID speedControl    = PID(1.0, 0, 0);
+        PID thetaControl    = PID(0.1, 0, 0);
+        PID phiControl      = PID(1.0, 0, 0);
 
-        Position position();
+        Position position = Position();
 
         Motor motorFL = Motor(D3, D12);
         Motor motorFR = Motor(D10, D8);
@@ -33,7 +33,46 @@ class Control {
 };
 
 Control::Control() {}
-void Control::autonomous(void) {}
+
+void Control::autonomous(void) {
+    float speed = 0, theta = 0, phi = 0;
+    string direction, axis;
+
+    position.findPosition();
+
+    position.location.driveAxis == 0 ? axis = "X" : axis = "Y";
+    position.location.driveDir  == 0 ? direction = "FORWARD" : direction = "REVERSE";
+    
+    float x = position.location.X;
+    float y = position.location.Y;
+    float heading = position.location.heading;
+    float desiredTheta;
+    
+    if(axis == "Y") {
+        speed = speedControl.compute(y, position.HALL_WIDTH-position.ROBOT_WIDTH/2);
+
+        if(direction == "FORWARD") desiredTheta = 0;
+        else desiredTheta = 180;
+
+        if(x >= 0) theta = thetaControl.compute(atan(x/speed), desiredTheta);
+        else       theta = thetaControl.compute(atan(x/speed), desiredTheta); 
+        
+        
+    }
+    else if(axis == "X") {
+        speed = speedControl.compute(x, position.HALL_WIDTH-position.ROBOT_WIDTH/2);
+        if(direction == "FORWARD") desiredTheta = 90;
+        else desiredTheta = -90;
+    }
+    else {
+        speed = 0;
+        desiredTheta = 0;
+    }
+
+    if(direction == "FORWARD") {
+
+    }
+}
 void Control::assisted(void) {}
 void Control::manual(void) {}
 

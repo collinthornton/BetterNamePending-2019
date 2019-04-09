@@ -27,6 +27,8 @@ class Position {
             float heading;                                  // Heading as compared to walls
         };
         location location;
+
+        const short ROBOT_WIDTH = 40, HALL_WIDTH = 61, TUNNEL_WIDTH = 45;
         
         bool is_updated = false;
     
@@ -46,8 +48,6 @@ class Position {
 
         bool st[8] = {0,0,0,0,0,0,0}, side[4] = {0,0,0,0};
         Timer time;
-
-        const short ROBOT_WIDTH = 40, HALL_WIDTH = 61, TUNNEL_WIDTH = 45;
 
         int distance[8];
         const float THRESH = 18;                            // Approximately 7" //! Adjust this value if too sensitive to approaching corners
@@ -254,7 +254,7 @@ int Position::findPosition(void) {
 
     short distanceX[SONAR_NUM];
 
-    for(int i=0; i<SONAR_NUM; ++i) {
+    for(int i=0; i<SONAR_NUM; ++i) {                                  // Find the x-component of the sonar measurement
         distanceX[i] = cos(theta) * distance[i];
     }
 
@@ -307,8 +307,16 @@ int Position::findPosition(void) {
     if(back  < 0) back  = MAX_DISTANCE;                                         // MAX_DISTANCE is defined in Ping.h
     if(left  < 0) left  = MAX_DISTANCE;
 
-    X = (left - right) / 2;
-    Y = (back - front) / 2;
+    if(axis == "Y") {
+        X = (left-right) / 2;
+        if(direction == "FORWARD")  Y = front;
+        else                        Y = back;
+    }
+    else {
+        Y = (back-front) / 2;
+        if(direction == "FORWARD")  X = right;
+        else                        X = left;
+    }
 
     axis == "X" ? location.driveAxis = 0 : location.driveAxis = 1;                  // axis = "X", driveAxis = 0, else driveAxis = 1;
     direction == "FORWARD" ? location.driveDir = 0 : location.driveDir = 1;         // direction = "FOR..", driveDir = 0, else driveDir = 0;
@@ -377,6 +385,6 @@ void Position::positionTimer(void) {
     }
 }
 
-Position position = Position();
+//Position position = Position();
 
 #endif
