@@ -5,8 +5,7 @@
 
 #include "WiFly.h"
 #include "HC05.h"
-#include "Motor.h"
-#include "Position.h"
+#include "Control.h"
 
 Serial pc(USBTX, USBRX, 38400);
 
@@ -16,6 +15,8 @@ bool printSonar=true;
 bool printWifi=false;
 
 bool printPosition=true;
+float speedConstant = .075;
+
 
 char inputPC() {
     char pcIn = pc.getc();
@@ -56,30 +57,33 @@ int processPC() {
                 return 1;
             if(controlMotors) {
                 case 'w':
-                    speed += .1;
+                    speed += speedConstant;
 
                     speed = min(speed, 1.0);
                     speed = max(speed, 0.0);
-                    
-                    drive.drive(speed, theta, phi);
+            
+                    control.drive.drive(speed, theta, phi);
                     pc.printf("%f %f %f\n", speed, theta, phi);
-                    return 1;
+                    break;
+
                 case 's':
-                    speed -= .1;
 
+                    speed -= speedConstant;
+    
                     speed = min(speed, 1.0);
                     speed = max(speed, 0.0);
 
-                    drive.drive(speed, theta, phi);
+                    control.drive.drive(speed, theta, phi);
                     pc.printf("%f %f %f\n", speed, theta, phi);
-                    return 1;
+
+                    break;
                 case 'd':
                     theta += 15;
 
                     theta = min(theta, 180.0);
                     theta = max(theta, -180.0);
 
-                    drive.drive(speed, theta, phi);
+                    control.drive.drive(speed, theta, phi);
                     pc.printf("%f %f %f\n", speed, theta, phi);
 
                     return 1;
@@ -89,7 +93,7 @@ int processPC() {
                     theta = min(theta, 180.0);
                     theta = max(theta, -180.0);
 
-                    drive.drive(speed, theta, phi);
+                    control.drive.drive(speed, theta, phi);
                     pc.printf("%f %f %f\n", speed, theta, phi);
                     return 1;
                 case 'q':
@@ -98,7 +102,7 @@ int processPC() {
                     phi = min(phi, 1.0);
                     phi = max(phi, -1.0);
 
-                    drive.drive(speed, theta, phi);
+                    control.drive.drive(speed, theta, phi);
                     pc.printf("%f %f %f\n", speed, theta, phi);
                     return 1;
                 case 'e':
@@ -107,9 +111,30 @@ int processPC() {
                     phi = min(phi, 1.0);
                     phi = max(phi, -1.0); 
 
-                    drive.drive(speed, theta, phi);
+                    control.drive.drive(speed, theta, phi);
                     pc.printf("%f %f %f\n", speed, theta, phi);
                     return 1;
+                case 'f':
+                    theta = 0;
+                    phi = 0;
+
+                    control.drive.drive(speed, theta, phi);
+                    pc.printf("%F %f %f\n", speed, theta, phi);
+                    return 1;
+                case 'b':
+                    theta = 180;
+                    phi = 0;
+
+                    control.drive.drive(speed, theta, phi);
+                    pc.printf("%F %f %f\n", speed, theta, phi);
+                    return 1;
+                case 'z':
+                    theta = 0;
+                    phi = 0;
+                    speed = 0;
+
+                    control.drive.drive(speed, theta, phi);
+                    pc.printf("%f %f %f\n", speed, theta, phi);
             }
             case 'p':
                 printSonar = !printSonar;

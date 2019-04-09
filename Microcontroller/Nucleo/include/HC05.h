@@ -3,8 +3,7 @@
 
 #include <string>
 
-#include "Drive.h"
-
+#include "Control.h"
 
 bool direction;
 double speed = 0, theta = 0, phi = 0;
@@ -15,9 +14,9 @@ class Bluetooth {
 
     public:
         Bluetooth(PinName, PinName, int);
-        void transmit(string&);
-        void transmit(char);
-        void transmit(const char*);
+        void transmit(string&, bool);
+        void transmit(char, bool);
+        void transmit(const char*, bool);
 
         void processBT(void);
 
@@ -30,6 +29,9 @@ class Bluetooth {
         static Bluetooth * instance;
         bool motorControl = true;
 
+        float speedConstant = .075;
+        double velocity;
+
         Serial hc05;
         char btIn;
 };
@@ -41,14 +43,20 @@ Bluetooth::Bluetooth(PinName tx = PE_8, PinName rx = PE_7, int baud = 38400) : h
     btIn = ' ';
 }
 
-void Bluetooth::transmit(string &out) {
+void Bluetooth::transmit(string &out, bool cr = true) {
     hc05.printf("%s", out);
+    if(cr)
+        hc05.printf("\r\n");
 }
-void Bluetooth::transmit(const char* out) {
+void Bluetooth::transmit(const char* out, bool cr = true) {
     hc05.printf("%s", out);
+    if(cr)
+        hc05.printf("\r\n");
 }
-void Bluetooth::transmit(char out) {
+void Bluetooth::transmit(char out, bool cr = true) {
     hc05.printf("%c", out);
+    if(cr)
+        hc05.printf("\r\n");
 }
 void Bluetooth::inputBT(void) {
     btIn = hc05.getc();
@@ -61,22 +69,25 @@ void Bluetooth::processBT(void) {
     switch (btIn) {
         if(controlMotors) {
             case 'w':
-                speed += .1;
+                speed += speedConstant;
 
                 speed = min(speed, 1.0);
                 speed = max(speed, 0.0);
-                
-                drive.drive(speed, theta, phi);
+           
+                control.drive.drive(speed, theta, phi);
                 hc05.printf("%f %f %f\n", speed, theta, phi);
                 break;
-            case 's':
-                speed -= .1;
 
+            case 's':
+
+                speed -= speedConstant;
+ 
                 speed = min(speed, 1.0);
                 speed = max(speed, 0.0);
 
-                drive.drive(speed, theta, phi);
+                control.drive.drive(speed, theta, phi);
                 hc05.printf("%f %f %f\n", speed, theta, phi);
+
                 break;
             case 'd':
                 theta += 15;
@@ -84,7 +95,7 @@ void Bluetooth::processBT(void) {
                 theta = min(theta, 180.0);
                 theta = max(theta, -180.0);
 
-                drive.drive(speed, theta, phi);
+                control.drive.drive(speed, theta, phi);
                 hc05.printf("%f %f %f\n", speed, theta, phi);
 
                 break;
@@ -94,7 +105,7 @@ void Bluetooth::processBT(void) {
                 theta = min(theta, 180.0);
                 theta = max(theta, -180.0);
 
-                drive.drive(speed, theta, phi);
+                control.drive.drive(speed, theta, phi);
                 hc05.printf("%f %f %f\n", speed, theta, phi);
                 break;
             case 'q':
@@ -103,7 +114,7 @@ void Bluetooth::processBT(void) {
                 phi = min(phi, 1.0);
                 phi = max(phi, -1.0);
 
-                drive.drive(speed, theta, phi);
+                control.drive.drive(speed, theta, phi);
                 hc05.printf("%f %f %f\n", speed, theta, phi);
                 break;
             case 'e':
@@ -112,7 +123,29 @@ void Bluetooth::processBT(void) {
                 phi = min(phi, 1.0);
                 phi = max(phi, -1.0); 
 
-                drive.drive(speed, theta, phi);
+                control.drive.drive(speed, theta, phi);
+                hc05.printf("%f %f %f\n", speed, theta, phi);
+                break;
+            case 'f':
+                theta = 0;
+                phi = 0;
+
+                control.drive.drive(speed, theta, phi);
+                hc05.printf("%F %f %f\n", speed, theta, phi);
+                break;
+            case 'b':
+                theta = 180;
+                phi = 0;
+
+                control.drive.drive(speed, theta, phi);
+                hc05.printf("%f %f %f\n", speed, theta, phi);
+                break;
+            case 'z':
+                theta = 0;
+                phi = 0;
+                speed = 0;
+
+                control.drive.drive(speed, theta, phi);
                 hc05.printf("%f %f %f\n", speed, theta, phi);
         }
     }

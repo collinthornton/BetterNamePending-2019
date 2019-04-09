@@ -42,7 +42,6 @@ class Drive
         void rotate(float, float);
 
     private:
-
         Motor *motor[4];
         bool direction[4];
         float speed[4];
@@ -70,17 +69,17 @@ void Drive::drive(float rho, float theta = 0, float phi = 0) {                  
             direction[i] = 0;
         }
     }
-    else if(theta > 45 && theta <= 135) {                                           // Motors 1,3 forward and 0,2 reverse from 45deg - 135deg
+    else if(theta > 45 && theta < 135) {                                           // Motors 1,3 forward and 0,2 reverse from 45deg - 135deg
         for(int i=0; i<4; ++i) {                                                    // (Strafe rights)
-            i % 2 == 0 ? direction[i]=1 : direction[i]=0;
-        }
-    }
-    else if(theta >= -135 && theta < -45) {                                         // Motors 0,2 forward and 1,3 revers from -45deg - -135deg
-        for(int i=0; i<4; ++i) {
             i % 2 == 0 ? direction[i]=0 : direction[i]=1;
         }
     }
-    else if((theta >= -180 && theta < -135) || (theta <= 180 && theta > 135)) {     // All motors reverse from -135deg - -180 deg or 135deg - 180deg
+    else if(theta > -135 && theta < -45) {                                         // Motors 0,2 forward and 1,3 revers from -45deg - -135deg
+        for(int i=0; i<4; ++i) {
+            i % 2 == 0 ? direction[i]=1 : direction[i]=0;
+        }
+    }
+    else if((theta >= -180 && theta <= -135) || (theta <= 180 && theta >= 135)) {     // All motors reverse from -135deg - -180 deg or 135deg - 180deg
         for(int i=0; i<4; ++i) {
             direction[i] = 1;
         }
@@ -88,35 +87,40 @@ void Drive::drive(float rho, float theta = 0, float phi = 0) {                  
                                                                                 // Speed control quadrants (note that speed is a scalar)
     if(theta >= 0 && theta <= 90) {                                                 // Motors 0,2 (1 to 0 to 1)
         for(int i=0; i<4; ++i) {                                                    // and 1,3 constant from 0deg to 90deg
-            i % 2 == 0 ? speed[i]=rho*(abs(theta-45)/45) : speed[i]=rho;
+            i % 2 == 1 ? speed[i]=rho*(abs(theta-45)/45) : speed[i]=rho;
         }
     }
     else if(theta > 90 && theta <= 180) {                                           // Motors 0,2 constant
         for(int i=0; i<4; ++i) {                                                    // and 1,3 (1 to 0 to 1) from 90deg to 180deg
-            i % 2 == 0 ? speed[i]=rho : speed[i]=rho*(abs(theta-135)/45);
+            i % 2 == 1 ? speed[i]=rho : speed[i]=rho*(abs(theta-135)/45);
         }
     }
     else if(theta >= -90 && theta < 0) {                                            // Motors 0,2 constant
         for(int i=0; i<4; ++i) {                                                    // and 1,3 (1 to 0 to 1) from 0deg to -90deg
-            i % 2 == 0 ? speed[i]=rho : speed[i]=rho*(abs(theta+45)/45);
+            i % 2 == 1 ? speed[i]=rho : speed[i]=rho*(abs(theta+45)/45);
         }
     }
     else if(theta >= -180 && theta < -90) {                                         // Motors 0,2 (1 to 0 to 1)
         for(int i=0; i<4; ++i) {                                                    // and 1,3 constant from-90deg to -180deg
-            i % 2 == 0 ? speed[i]=rho*(abs(theta+135)/45) : speed[i]=rho;
+            i % 2 == 1 ? speed[i]=rho*(abs(theta+135)/45) : speed[i]=rho;
         }
+    }
+
+    for(int i=0; i<4; ++i) {
+        speed[i] = speed[i]*(1+abs(sin(theta)));                                    // Force vectors move to 45 degrees as theta approaches +/- 90. Make speed a function of theta
+                                                                                    //  to compensate the lack of power. 
     }
                                                                             // Note that rotation control will be very sensitive
                                                                                   // Right motors decrease by speed*phi
-    speed[0] -= 2*speed[0]*phi;                                                   // Left motors increased by speed*phi
-    speed[1] -= 2*speed[1]*phi;
-    speed[2] += 2*speed[2]*phi;
-    speed[3] += 2*speed[3]*phi;
+    speed[0] -= speed[0]*phi;                                                   // Left motors increased by speed*phi
+    speed[1] -= speed[1]*phi;
+    speed[2] += speed[2]*phi;
+    speed[3] += speed[3]*phi;
 
     for(int i=0; i<4; ++i) {
         if(speed[i] < 0) {
             speed[i] = -speed[i];
-            direction[i] = -direction[i];
+            direction[i] = !direction[i];
         }
 
         speed[i] = min(speed[i], (float)1.0);
@@ -139,12 +143,12 @@ void Drive::linear(float rho, float theta=0) {                                  
     }
     else if(theta > 45 && theta <= 135) {                                           // Motors 1,3 forward and 0,2 reverse from 45deg - 135deg
         for(int i=0; i<4; ++i) {                                                    // (Strafe rights)
-            i % 2 == 0 ? direction[i]=1 : direction[i]=0;
+            i % 2 == 0 ? direction[i]=0 : direction[i]=1;
         }
     }
     else if(theta >= -135 && theta < -45) {                                         // Motors 0,2 forward and 1,3 revers from -45deg - -135deg
         for(int i=0; i<4; ++i) {
-            i % 2 == 0 ? direction[i]=0 : direction[i]=1;
+            i % 2 == 0 ? direction[i]=1 : direction[i]=0;
         }
     }
     else if((theta >= -180 && theta < -135) || (theta <= 180 && theta > 135)) {     // All motors reverse from -135deg - -180 deg or 135deg - 180deg
@@ -203,13 +207,5 @@ void Drive::rotate(float rho, float phi) {
     for(int i=0; i<4; ++i)
         speed[i] = rho*abs(phi);
 }
-
-
-
-Motor motorFL(D3, D12);
-Motor motorFR(D11, D4);
-Motor motorBR(D10, D8);
-Motor motorBL(D13, D2);
-Drive drive(motorFR, motorBR, motorBL, motorFL);
 
 #endif

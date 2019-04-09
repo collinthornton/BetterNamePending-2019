@@ -62,7 +62,7 @@ class Wifi {
         char wifiIn;
 
         bool firstDetection = true;
-        bool outputBT = true;
+        bool outputBT = false;
 };
 
 

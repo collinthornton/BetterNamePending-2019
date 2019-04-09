@@ -299,43 +299,4 @@ void Ping::ISR(void) {
 
 //-----------------------------------------------------------------------//
 
-Ping sonar[SONAR_NUM] = {
-  #ifdef ENABLE_SONAR_INTERRUPT 
-  Ping(D9, A0, MAX_DISTANCE),                // Declare ultrasonic sensors here for interrupt use
-  Ping(PE_3, A2, MAX_DISTANCE),
-  Ping(A5, A4, MAX_DISTANCE),
-  Ping(PE_5, PF_2, MAX_DISTANCE),
-  Ping(PE_2, PE_12, MAX_DISTANCE),
-  Ping(PA_0, PE_15, MAX_DISTANCE),
-  Ping(PF_7, PD_0, MAX_DISTANCE),
-  Ping(PF_9, PD_1, MAX_DISTANCE)
-  #else
-  Ping(D9, MAX_DISTANCE)                    // Declare ultrasonic sensors here for single pin use
-  Ping(A1, MAX_DISTANCE),
-  Ping(A5, MAX_DISTANCE),
-  Ping(PE_5, MAX_DISTANCE),
-  Ping(PE_2, MAX_DISTANCE),
-  Ping(PA_0, MAX_DISTANCE),
-  Ping(PF_7, MAX_DISTANCE),
-  Ping(PF_9, MAX_DISTANCE)
-  #endif
-};
-
-Ping * Ping::instance[SONAR_NUM];         // This fills declares an array the same size as the number of Sonar objects
-                                          // it is used for the interrupt functions
-Timer sonarTimer;
-int *ping;                                  // Variable to track distance in cm for each ultrasonic sensor
-
-void sonar_timer() {                        // Ping all Sonar objects and reset the sonar timer
-  for( int i=0; i<SONAR_NUM; ++i)
-    ping[i] = sonar[i].ping_cm(MAX_DISTANCE);
-  sonarTimer.reset();
-}
-
-/*void sonar_timer() {
-  ping = sonar[0].ping_cm_all(MAX_DISTANCE);
-}*/
-
-//---------------------------------------------------------------------//
-
 #endif
