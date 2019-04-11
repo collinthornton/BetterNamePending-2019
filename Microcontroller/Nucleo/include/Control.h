@@ -14,16 +14,16 @@ class Control {
         
         void autonomous(void); //! These will need input variables -- set to void initially for the sake of brevity
         void assisted(void);
-        void manual(void);
+        void manual(float rho, float theta, float phi);
 
-        Drive drive   = Drive(motorFR, motorBR, motorBL, motorFL);
+        Position position = Position();
 
     private:
         PID speedControl    = PID(1.0, 0, 0);
         PID thetaControl    = PID(0.1, 0, 0);
         PID phiControl      = PID(1.0, 0, 0);
-
-        Position position = Position();
+        
+        Drive drive   = Drive(motorFR, motorBR, motorBL, motorFL);
 
         Motor motorFL = Motor(D3, D12);
         Motor motorFR = Motor(D10, D8);
@@ -38,7 +38,7 @@ void Control::autonomous(void) {
     float speed = 0, theta = 0, phi = 0;
     string direction, axis;
 
-    position.findPosition();
+    position.positionTimer();
 
     position.location.driveAxis == 0 ? axis = "X" : axis = "Y";
     position.location.driveDir  == 0 ? direction = "FORWARD" : direction = "REVERSE";
@@ -46,35 +46,38 @@ void Control::autonomous(void) {
     float x = position.location.X;
     float y = position.location.Y;
     float heading = position.location.heading;
-    float desiredTheta;
     
     if(axis == "Y") {
         speed = speedControl.compute(y, position.HALL_WIDTH-position.ROBOT_WIDTH/2);
 
-        if(direction == "FORWARD") desiredTheta = 0;
-        else desiredTheta = 180;
+        if(direction == "FORWARD") theta = 0;
+        else theta = 180;
 
-        if(x >= 0) theta = thetaControl.compute(atan(x/speed), desiredTheta);
-        else       theta = thetaControl.compute(atan(x/speed), desiredTheta); 
-        
-        
+        theta += thetaControl.compute(theta + x, theta);     
     }
     else if(axis == "X") {
         speed = speedControl.compute(x, position.HALL_WIDTH-position.ROBOT_WIDTH/2);
-        if(direction == "FORWARD") desiredTheta = 90;
-        else desiredTheta = -90;
+        if(direction == "FORWARD") theta = 90;
+        else theta = -90;
+
+        theta += thetaControl.compute(theta + y, theta);
     }
     else {
         speed = 0;
-        desiredTheta = 0;
+        theta = 0;
     }
 
-    if(direction == "FORWARD") {
+    phi += phiControl.compute(heading, 0);
 
-    }
+    drive.drive(speed, theta, phi);
 }
-void Control::assisted(void) {}
-void Control::manual(void) {}
 
-Control control = Control();
+void Control::assisted(void) {}
+void Control::manual(float rho, float theta, float phi) {
+    string direction, axis;
+
+    position.positionTimer();
+    drive.drive(rho, theta, phi);
+}
+
 #endif

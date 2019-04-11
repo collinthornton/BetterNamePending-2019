@@ -327,6 +327,8 @@ int Position::findPosition(void) {
     location.Y          = Y;
     location.heading    = theta;
 
+    is_updated = true;
+
     return 1;
 }
 float Position::findTheta(short distance0, short distance1, short distance2, short distance3) {  
