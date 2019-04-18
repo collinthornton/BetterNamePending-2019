@@ -34,8 +34,6 @@
 #else
 #define PING_OVERHEAD 150       //! Remember to calibrate PING_OVERHEAD for device
 #endif
-
-#define PING_TIMER_OVERHEAD 13  // Ping timer overhead in microseconds (uS). Default=13
                                 // Conversion from uS to distance (round result to nearest cm or inch).
 #define PingConvert(echoTime, conversionFactor) (max((( int)echoTime + conversionFactor / 2) / conversionFactor, (echoTime ? 1 : 0)))
 
@@ -43,23 +41,16 @@ class Ping
 {
   public:
     #ifndef ENABLE_SONAR_INTERRUPT
-    Ping(PinName singlePin,  int max_cm_distance = MAX_SENSOR_DISTANCE);
+    Ping(const PinName &singlePin,  int max_cm_distance = MAX_SENSOR_DISTANCE);
     DigitalInOut pin;
     #else
-    Ping(PinName echoPin, PinName triggerPin,  int max_cm_dinstance = MAX_SENSOR_DISTANCE);
-    DigitalOut trigger;
-    InterruptIn echo;
+    Ping(const PinName &echoPin, const PinName &triggerPin,  int max_cm_dinstance = MAX_SENSOR_DISTANCE);
     #endif
 
     static Ping* instance[SONAR_NUM];
 
     int ping( int max_cm_distance = 0);
     int ping_cm( int max_cm_distance = 0);
-
-    Timer pingTimer;
-    static Timer triggerTimer;
-    int _maxEchoTime;
-    long _max_time;
 
   private:
     void set_max_distance( int max_cm_distance);
@@ -69,6 +60,12 @@ class Ping
     static void set_state(short state);
 
     bool triggerSuccess;
+    DigitalOut trigger;
+    InterruptIn echo;
+
+    Timer pingTimer;
+    int _maxEchoTime;
+    long _max_time;
 
     #ifdef ENABLE_SONAR_INTERRUPT
     void ISR(void);
@@ -89,12 +86,12 @@ class Ping
     static void set_input();
     static void set_output();
 
-     int tempTime;
+    int tempTime;
     #endif
 };
 
 #ifndef ENABLE_SONAR_INTERRUPT
-Ping::Ping(PinName singlePin,  int max_cm_distance) : pin(singlePin)
+Ping::Ping(const PinName &singlePin,  int max_cm_distance) : pin(singlePin)
 {
     set_max_distance(max_cm_distance);
     for(int i=0; i<SONAR_NUM; ++i) {
@@ -103,38 +100,46 @@ Ping::Ping(PinName singlePin,  int max_cm_distance) : pin(singlePin)
     }
 }
 #else
-Ping::Ping(PinName echoPin, PinName triggerPin,  int max_cm_distance) : echo(echoPin), trigger(triggerPin) {
+Ping::Ping(const PinName &echoPin, const PinName &triggerPin,  int max_cm_distance) : echo(echoPin), trigger(triggerPin) {
     switch(echoPin) {
         case D9:
             echo.fall(&static_ISR0);
+            echo.rise(&static_ISR0);
             instance[0] = this;
             break;
         case PE_3:
             echo.fall(&static_ISR1);
+            echo.rise(&static_ISR1);
             instance[1] = this;
             break;
         case PF_2:
             echo.fall(&static_ISR2);
+            echo.rise(&static_ISR2);
             instance[2] = this;
             break;
         case PE_10:
             echo.fall(&static_ISR3);
+            echo.rise(&static_ISR3);
             instance[3] = this;
             break;
         case PE_2:
             echo.fall(&static_ISR4);
+            echo.rise(&static_ISR4);
             instance[4] = this;
             break;
         case PA_0:
             echo.fall(&static_ISR5);
+            echo.rise(&static_ISR5);
             instance[5] = this;
             break;
         case PF_7:
             echo.fall(&static_ISR6);
+            echo.rise(&static_ISR6);
             instance[6] = this;
             break;
         case PF_9:
             echo.fall(&static_ISR7);
+            echo.rise(&static_ISR7);
             instance[7] = this;
             break;
         default:
@@ -144,6 +149,8 @@ Ping::Ping(PinName echoPin, PinName triggerPin,  int max_cm_distance) : echo(ech
     set_max_distance(max_cm_distance);
 }
 #endif
+
+// ---------------------------------- BEGIN MEMBER FUNCTIONS ---------------------------- //
 
 void Ping::set_max_distance( int max_cm_distance)
 {
@@ -192,16 +199,20 @@ int Ping::ping_cm( int max_cm_distance)
     #ifndef ENABLE_SONAR_INTERRUPT
     echoTime = ping(max_cm_distance);                       // Calls the ping method and returns with the ping echo distance in uS.
     #else
+
     __disable_irq();
     pingUpdated = pingUpdatedShared;
+    __enable_irq();
+
     if(pingUpdated) {
         echoTime = tempTime - PING_OVERHEAD;
         pingUpdated = false;
         pingUpdatedShared = false;
     }
-    __enable_irq();
+    //__enable_irq();
+
     ping(max_cm_distance); 
-    if(echoTime > _maxEchoTime) return NO_ECHO;
+    //if(echoTime > _maxEchoTime) return NO_ECHO;
     #endif
 #if ROUNDING_ENABLED == false
     return echoTime / US_ROUNDTRIP_CM;                      // Call the ping method and returns the distance in centimeters (no rounding).
@@ -239,17 +250,16 @@ bool Ping::ping_trigger()
     #else
 
     //__disable_irq();
+    if(echo) return false;
+
     trigger = 0;
     wait_us(4);
     trigger = 1;
     wait_us(10);
     trigger = 0;
-
-    if(echo)
-        return false;
     
-    pingTimer.reset();
-    pingTimer.start();
+    //pingTimer.reset();
+    //pingTimer.start();
     _max_time = _maxEchoTime;
     //__enable_irq();
     return true;
@@ -290,15 +300,20 @@ void Ping::static_ISR7(void) {
 }
 
 void Ping::ISR(void) {
-    pingTimer.stop();
-    pingUpdatedShared = true;
-    tempTime = pingTimer.read_us() - PING_OVERHEAD;
-    pingTimer.reset();
+    if(echo) {
+        pingTimer.reset();
+        pingTimer.start();
+    } else {
+        pingTimer.stop();
+        pingUpdatedShared = true;
+        tempTime = pingTimer.read_us() - PING_OVERHEAD;
+        pingTimer.reset();
+    }
 }
 #endif
 
 //-----------------------------------------------------------------------//
-Ping *Ping::instance[SONAR_NUM];        // This fills declares an array the same size as the number of Sonar objects
+Ping * Ping::instance[SONAR_NUM];        // This fills declares an array the same size as the number of Sonar objects
                                         // it is used for the interrupt functions
 
 #endif

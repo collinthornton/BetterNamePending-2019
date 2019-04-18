@@ -1,8 +1,8 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
-#include <mbed.h>
-#include <string>
+//#include <mbed.h>
+//#include <string>
 
 #include "Position.h"
 #include "PID.h"

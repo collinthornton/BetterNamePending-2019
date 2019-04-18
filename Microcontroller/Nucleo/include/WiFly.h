@@ -18,7 +18,7 @@
 class Wifi {
 
     public:
-        Wifi(PinName, PinName, PinName, int);
+        Wifi(const PinName &joinPin, const PinName &connectedPin, const PinName &connectPin, int);
         void wifiConfig(bool);
         int wifiInit(void);
         int wifiDisconnectHost(void);
@@ -77,7 +77,7 @@ class Wifi {
 };
 
 
-Wifi::Wifi(PinName joinPin = D6, PinName connectedPin = D7, PinName connectPin = D5, int  baud = 38400) : 
+Wifi::Wifi(const PinName &joinPin = D6, const PinName &connectedPin = D7, const PinName &connectPin = D5, int  baud = 38400) : 
         joined(joinPin), connected(connectedPin), connect(connectPin), wifi(D1, D0, baud) {
 
     instance = this;
