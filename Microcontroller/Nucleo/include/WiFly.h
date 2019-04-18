@@ -13,6 +13,7 @@
 
 #include <mbed.h>
 #include <HC05.h>
+#include "SerialPC.h"
 
 class Wifi {
 
@@ -31,10 +32,12 @@ class Wifi {
         bool connectEnabled = true;
         static Wifi* instance;
 
-        string driveType = "AUTONOMOUS";
+        string driveType = "MANUAL";
 
         bool printSonar = false, motorUpdated = false;
         double speed = 0, theta = 0, phi = 0;
+
+        bool NETWORK_TIMEOUT = false, CONNECTION_TIMEOUT = false;
 
     private:
         void inputWifi(void);
@@ -67,7 +70,8 @@ class Wifi {
         char wifiIn;
 
         bool firstDetection = true;
-        bool outputBT = false;
+        bool outputBT = true;
+        bool outputPC = true;
 
         float speedConstant = 0.075;
 };
@@ -80,7 +84,7 @@ Wifi::Wifi(PinName joinPin = D6, PinName connectedPin = D7, PinName connectPin =
     wifi.attach(&wifi_ISR);
 
     delay       = 0.35;
-    SSID        = "MERCURY";
+    SSID        = "Warring$Turtles$2.0";
     AUTH        = "0";
     PHRASE      = "12345678";
     COM_REMOTE  = "0";
@@ -148,10 +152,10 @@ void Wifi::wifiConfig(bool loadFile = true) {
     wait(delay);
     wifi.printf("set comm match %s\r", COMM_MATCH);
     wait(delay);
-//    wifi.printf("join\r");
-//    wait(delay);
-//   wifi.printf("save\r");
-//    wait(delay);
+    wifi.printf("join\r");
+    wait(delay);
+   wifi.printf("save\r");
+    wait(delay);
 //    wifi.printf("open\r"); //-------------------------------------//
 
     wifi.printf("save %s\r", FILE_NAME);
@@ -236,6 +240,7 @@ int Wifi::wifiInit(void) {
 
             while(init.read() < 5)
                 if(connected) break;
+            init.stop();
         }
     }
     if(!connected) return -1;
@@ -265,7 +270,7 @@ void Wifi::transmit(char input, bool cr = true) {
 
 void Wifi::inputWifi(void) {
     wifiIn = wifi.getc();
-    if(outputBT) hc05.transmit(wifiIn);
+    if(outputBT) hc05.transmit(wifiIn, false);
 }
 int Wifi::processWifi(void) {
     if(!wifi.readable()) {
@@ -285,7 +290,6 @@ int Wifi::processWifi(void) {
             speed += speedConstant;
             speed = min(speed, 1.0);
             speed = max(speed, 0.0);
-            wifi.printf("%f %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
@@ -293,7 +297,6 @@ int Wifi::processWifi(void) {
             speed -= speedConstant;
             speed = min(speed, 1.0);
             speed = max(speed, 0.0);
-            wifi.printf("%f %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
@@ -301,7 +304,6 @@ int Wifi::processWifi(void) {
             theta += 15;
             theta = min(theta, 180.0);
             theta = max(theta, -180.0);
-            wifi.printf("%f %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
@@ -309,7 +311,6 @@ int Wifi::processWifi(void) {
             theta -= 15;
             theta = min(theta, 180.0);
             theta = max(theta, -180.0);
-            wifi.printf("%f %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
@@ -317,7 +318,6 @@ int Wifi::processWifi(void) {
             phi -= .1;
             phi = min(phi, 1.0);
             phi = max(phi, -1.0);
-            wifi.printf("%f %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
@@ -325,21 +325,18 @@ int Wifi::processWifi(void) {
             phi += .1;
             phi = min(phi, 1.0);
             phi = max(phi, -1.0); 
-            wifi.printf("%f %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
         case 'f':
             theta = 0;
             phi = 0;
-            wifi.printf("%F %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
         case 'b':
             theta = 180;
             phi = 0;
-            wifi.printf("%F %f %f\n", speed, theta, phi);
             motorUpdated = true;
             break;
 
@@ -347,7 +344,6 @@ int Wifi::processWifi(void) {
             theta = 0;
             phi = 0;
             speed = 0;
-            wifi.printf("%f %f %f\n", speed, theta, phi);
             motorUpdated = true;
     }
 
@@ -362,33 +358,30 @@ void Wifi::wifi_ISR(void) {
 
 
 void Wifi::handleLossOfSignal(void) {
-    if((!joined || !connected) && firstDetection && connectEnabled) {
+    if(!connectEnabled) return;
+
+    if((!joined || !connected) && firstDetection) {
         losTimer.reset();
         losTimer.start();
         firstDetection = false;
     } else if((!joined || !connected) && !firstDetection) {
-        if(losTimer.read() >= 1.5) {
+        if(losTimer.read() >= 1.0) {
             losTimer.stop();
+            losTimer.reset();
                 if(!joined) {
                     hc05.transmit("------| Network Timed Out |------\n");
-                    while(!joined) { 
-                        //wifiConfig();
-                        // STOP MOTORS
-                    }
-                    hc05.transmit("------| Timeout Released |------\n");
+                    NETWORK_TIMEOUT = true;
                 }
                 if(!connected) {
                     hc05.transmit("------| Connection Timed Out |------\n");
-                    while(!connected) { 
-                        //wifiInit();
-                    }
-                    hc05.transmit("------| Timeout Released |------\n");
+                    CONNECTION_TIMEOUT = true;
             }
-            firstDetection = true;
-        } else if(joined && connected) {
-            losTimer.stop();
-            losTimer.reset();
-        }
+        } 
+    }
+    else {
+        firstDetection = true;
+        NETWORK_TIMEOUT = false;
+        CONNECTION_TIMEOUT = false;
     }
 
     return;
@@ -397,6 +390,7 @@ void Wifi::handleLossOfSignal(void) {
 //-------------------------------------------------------------------------------------------------//
 
 Wifi * Wifi::instance;
+
 
 //-------------------------------------------------------------------------------------------------//
 

@@ -25,6 +25,7 @@ class Motor {
         
         void drive(float, int);
 
+        float maxSpeed = 0.4;
     private:
         PwmOut motor;
         DigitalOut direction;
@@ -35,8 +36,8 @@ Motor::Motor(PinName enable, PinName dir) : motor(enable), direction(dir) {
     motor.period(.00005f);                                     // PWM frequency @ 20Khz -- .00005f
 }
 void Motor::drive(float mag, int dir) {
-    mag < 0 ? mag = 0 : mag = mag;
-    mag > 1 ? mag = 1 : mag = mag;
+    mag = max(mag, (float)0.0);
+    mag = min(mag, maxSpeed);
 
     direction = dir;
     motor = mag;

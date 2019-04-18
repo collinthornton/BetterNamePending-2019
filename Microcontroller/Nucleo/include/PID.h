@@ -5,21 +5,23 @@
 
 class PID {
     public:
-        PID(float, float, float);
+        PID(float, float, float, float, float);
         float compute(float, float);
         void pauseTimer(void);
         void resumeTimer(void);
 
     private:
         float Kp, Ki, Kd;
-        float error, prevError, sumError;
+        float error, prevError, sumError, minVal, maxVal;
         Timer dt;
 };
 
-PID::PID(float Kp, float Ki, float Kd) {
+PID::PID(float Kp, float Ki, float Kd, float minVal, float maxVal) {
     this->Kp = Kp;
     this->Ki = Ki;
     this->Kd = Kd;
+    this->minVal = minVal;
+    this->maxVal = maxVal;
 
     dt.start();
 }
@@ -34,7 +36,11 @@ float PID::compute(float actual, float desired) {
     sumError += error;
     dt.reset();
 
-    return Kp*Perror + Ki*Ierror + Kd*Derror;
+    float output = Kp*Perror + Ki*Ierror + Kd*Derror;
+    output = max(output, minVal);
+    output = min(output, maxVal);
+
+    return output;
 }
 void PID::pauseTimer() {
     dt.stop();

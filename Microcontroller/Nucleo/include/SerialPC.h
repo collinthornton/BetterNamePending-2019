@@ -14,7 +14,7 @@ class PC {
         void transmit(char input, bool cr);
 
         string pcData;
-        bool pcUpdated = false, printSonar = false, printWifi = false, printPosition = true, wifiConnectEnabled = false, motorUpdated = false;
+        bool pcUpdated = false, printSonar = false, printWifi = false, printPosition = false, wifiConnectEnabled = false, motorUpdated = false;
         double speed = 0, theta = 0, phi = 0;
         float speedConstant = 0.075;
     
@@ -35,6 +35,7 @@ int PC::processPC() {
     while(pc.readable()) {
         char input = inputPC();
         pcData += input;
+        pcUpdated = true;
 
         switch(input) {
             case '\r':

@@ -15,7 +15,7 @@
 #define PING_H
 
 #define SONAR_NUM 8  
-#define MAX_DISTANCE 25                                   // Adjust to indicate total number of ultrasonic sensors. 
+#define MAX_DISTANCE 50                                   // Adjust to indicate total number of ultrasonic sensors. 
 #define ENABLE_SONAR_INTERRUPT                          // Comment this line to enable single pin sonar, uncomment to increase speed by about 200x
 
 #include <mbed.h>
@@ -113,11 +113,11 @@ Ping::Ping(PinName echoPin, PinName triggerPin,  int max_cm_distance) : echo(ech
             echo.fall(&static_ISR1);
             instance[1] = this;
             break;
-        case A5:
+        case PF_2:
             echo.fall(&static_ISR2);
             instance[2] = this;
             break;
-        case PE_5:
+        case PE_10:
             echo.fall(&static_ISR3);
             instance[3] = this;
             break;
@@ -174,7 +174,7 @@ void Ping::set_max_distance( int max_cm_distance)
         {
             pingTimer.stop();
             pingTimer.reset();
-            return NO_ECHO;                                 // Stop the loop and return NO_ECHO (false) if we're beyond the set maximum distance
+            return NO_ECHO;                                 // Stop the loop and return NO_ECHO (-1) if we're beyond the set maximum distance
         }
     }
 
@@ -188,7 +188,7 @@ void Ping::set_max_distance( int max_cm_distance)
 
 int Ping::ping_cm( int max_cm_distance)
 {
-    int echoTime;
+    int echoTime = NO_ECHO;
     #ifndef ENABLE_SONAR_INTERRUPT
     echoTime = ping(max_cm_distance);                       // Calls the ping method and returns with the ping echo distance in uS.
     #else
@@ -238,7 +238,7 @@ bool Ping::ping_trigger()
 
     #else
 
-    __disable_irq();
+    //__disable_irq();
     trigger = 0;
     wait_us(4);
     trigger = 1;
@@ -251,7 +251,7 @@ bool Ping::ping_trigger()
     pingTimer.reset();
     pingTimer.start();
     _max_time = _maxEchoTime;
-    __enable_irq();
+    //__enable_irq();
     return true;
     #endif
 }
@@ -298,5 +298,7 @@ void Ping::ISR(void) {
 #endif
 
 //-----------------------------------------------------------------------//
+Ping *Ping::instance[SONAR_NUM];        // This fills declares an array the same size as the number of Sonar objects
+                                        // it is used for the interrupt functions
 
 #endif

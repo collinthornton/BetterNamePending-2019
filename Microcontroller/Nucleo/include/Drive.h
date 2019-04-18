@@ -110,16 +110,17 @@ void Drive::drive(float rho, float theta = 0, float phi = 0) {                  
         speed[i] = speed[i]*(1+abs(sin(theta)));                                    // Force vectors move to 45 degrees as theta approaches +/- 90. Make speed a function of theta
                                                                                     //  to compensate the lack of power. 
     }
-                                                                            // Note that rotation control will be very sensitive
                                                                                   // Right motors decrease by speed*phi
-    speed[0] -= speed[0]*phi;                                                   // Left motors increased by speed*phi
-    speed[1] -= speed[1]*phi;
-    speed[2] += speed[2]*phi;
-    speed[3] += speed[3]*phi;
+                                                                                  // Left motors increased by speed*phi
+        float rotSpeed[4] = { speed[0], speed[1], speed[2], speed[3] };
+        rotSpeed[0] -= speed[0]*(2*phi);                                                   
+        rotSpeed[1] -= speed[1]*(2*phi);
+        rotSpeed[2] += speed[2]*(2*phi);
+        rotSpeed[3] += speed[3]*(2*phi);
 
     for(int i=0; i<4; ++i) {
         if(speed[i] < 0) {
-            speed[i] = -speed[i];
+            speed[i] = -1*speed[i];
             direction[i] = !direction[i];
         }
 

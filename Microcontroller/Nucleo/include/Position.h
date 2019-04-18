@@ -10,8 +10,6 @@
 
 using namespace std;
 
-Ping *Ping::instance[SONAR_NUM];        // This fills declares an array the same size as the number of Sonar objects
-                                        // it is used for the interrupt functions
 class Position {
     public:
         Position();
@@ -47,9 +45,9 @@ class Position {
         bool   bridge        = false;
 
         bool st[8] = {0,0,0,0,0,0,0}, side[4] = {0,0,0,0};
-        Timer time;
+        Timer timer;
 
-        int distance[8];
+        int distance[8] = {0,0,0,0,0,0,0,0};
         const float THRESH = 18;                            // Approximately 7" //! Adjust this value if too sensitive to approaching corners
             /*
                 Expected ultrasonic sensor orientation
@@ -64,14 +62,14 @@ class Position {
         #ifdef ENABLE_SONAR_INTERRUPT 
             Ping(D9, A0, MAX_DISTANCE),                // Declare ultrasonic sensors here for interrupt use
             Ping(PE_3, A2, MAX_DISTANCE),
-            Ping(A5, A4, MAX_DISTANCE),
-            Ping(PE_5, PF_2, MAX_DISTANCE),
+            Ping(PF_2, PE_5, MAX_DISTANCE),
+            Ping(PE_10, PD_11, MAX_DISTANCE),
             Ping(PE_2, PE_12, MAX_DISTANCE),
             Ping(PA_0, PE_15, MAX_DISTANCE),
             Ping(PF_7, PD_0, MAX_DISTANCE),
             Ping(PF_9, PD_1, MAX_DISTANCE)
         #else
-            Ping(D9, MAX_DISTANCE)                    // Declare ultrasonic sensors here for single pin use
+            Ping(D9, MAX_DISTANCE),                    // Declare ultrasonic sensors here for single pin use
             Ping(A1, MAX_DISTANCE),
             Ping(A5, MAX_DISTANCE),
             Ping(PE_5, MAX_DISTANCE),
@@ -91,8 +89,9 @@ Position::Position() {
     direction = "FORWARD";
     location.driveAxis = 0;                    // Initialize drive axis as forward
 
-    //time.start();
+    timer.start();
 }
+
 int Position::findState(void) {
 
     if(SONAR_NUM < 8) return -2;
@@ -352,13 +351,14 @@ float Position::findTheta(short distance0, short distance1) {
 string Position::toString(void) {
     string output;
 
+    //output += to_string(distance[0]);
     for(int i=0; i<SONAR_NUM; ++i) {
-        char distanceStr[4];
-        sprintf(distanceStr, "%2i", distance[i]);
-        output += distanceStr;
+        char buff[10];
+        sprintf(buff, "%3i", distance[i]);
+        output += buff;
         output += ' ';
     }
-    
+/*    
     output += "State: "     + state         + ' ';
     output += "Direction: " + direction     + ' ';
     output += "Axis: "      + axis          + ' ';
@@ -375,18 +375,15 @@ string Position::toString(void) {
     output += to_string(location.X)         + ' ';
     output += to_string(location.Y)         + ' ';
     output += to_string(location.heading)   + ' ';
-
+*/
     return output;
 }
 
 void Position::positionTimer(void) {
-    if(time.read_us() > 15000) {
-        //findState();
+    if(timer.read() > .025) {
         findPosition();
-        time.reset();
+        timer.reset();
     }
 }
-
-//Position position = Position();
 
 #endif

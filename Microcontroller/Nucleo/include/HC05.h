@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "Control.h"
+//#include "Control.h"
 
 class Bluetooth {
 
@@ -63,6 +63,8 @@ void Bluetooth::processBT(void) {
         return;
     }
     inputBT();
+    msg += btIn;
+    
     switch (btIn) {
         case 'p':
             printSonar = !printSonar;

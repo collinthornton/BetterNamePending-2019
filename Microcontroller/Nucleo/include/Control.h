@@ -19,14 +19,14 @@ class Control {
         Position position = Position();
 
     private:
-        PID speedControl    = PID(1.0, 0, 0);
-        PID thetaControl    = PID(0.1, 0, 0);
-        PID phiControl      = PID(1.0, 0, 0);
+        PID speedControl    = PID(1.0, 0, 0, 0, 1);
+        PID thetaControl    = PID(0.1, 0, 0, -180, 180);
+        PID phiControl      = PID(1.0, 0, 0, -1, 1);
         
         Drive drive   = Drive(motorFR, motorBR, motorBL, motorFL);
 
         Motor motorFL = Motor(D3, D12);
-        Motor motorFR = Motor(D10, D8);
+        Motor motorFR = Motor(PB_11, D8);
         Motor motorBR = Motor(D11, D4);
         Motor motorBL = Motor(D13, D2);
 
@@ -37,8 +37,6 @@ Control::Control() {}
 void Control::autonomous(void) {
     float speed = 0, theta = 0, phi = 0;
     string direction, axis;
-
-    position.positionTimer();
 
     position.location.driveAxis == 0 ? axis = "X" : axis = "Y";
     position.location.driveDir  == 0 ? direction = "FORWARD" : direction = "REVERSE";
@@ -76,7 +74,6 @@ void Control::assisted(void) {}
 void Control::manual(float rho, float theta, float phi) {
     string direction, axis;
 
-    position.positionTimer();
     drive.drive(rho, theta, phi);
 }
 
