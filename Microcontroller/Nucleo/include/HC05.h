@@ -8,7 +8,7 @@
 class Bluetooth {
 
     public:
-        Bluetooth(PinName, PinName, int);
+        Bluetooth(const PinName &tx, const PinName &rx, int);
         void transmit(string&, bool);
         void transmit(char, bool);
         void transmit(const char*, bool);
@@ -33,7 +33,7 @@ class Bluetooth {
         char btIn;
 };
 
-Bluetooth::Bluetooth(PinName tx = PE_8, PinName rx = PE_7, int baud = 38400) : hc05(tx, rx, baud) {
+Bluetooth::Bluetooth(const PinName &tx = PE_8, const PinName &rx = PE_7, int baud = 38400) : hc05(tx, rx, baud) {
     instance = this;
     hc05.attach(&bt_ISR);
     msg.resize(128);

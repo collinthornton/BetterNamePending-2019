@@ -5,7 +5,7 @@
 
 class PC {
     public:
-        PC(PinName tx, PinName rx, int baud);
+        PC(const PinName &tx, const PinName &rx, int baud);
 
         char inputPC(void);
         int  processPC(void);
@@ -21,7 +21,7 @@ class PC {
         Serial pc;
 };
 
-PC::PC(PinName tx = USBTX, PinName rx = USBRX, int baud = 38400) : pc(tx, rx, baud) { pcData.resize(128); }
+PC::PC(const PinName &tx = USBTX, const PinName &rx = USBRX, int baud = 38400) : pc(tx, rx, baud) { pcData.resize(128); }
 
 
 

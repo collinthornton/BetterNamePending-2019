@@ -21,7 +21,7 @@
 
 class Motor {
     public:
-        Motor(PinName, PinName);
+        Motor(const PinName &enable, const PinName &dir);
         
         void drive(float, int);
 
@@ -34,7 +34,7 @@ class Motor {
 
 };
 
-Motor::Motor(PinName enable, PinName dir) : motor(enable), direction(dir) {
+Motor::Motor(const PinName &enable, const PinName &dir) : motor(enable), direction(dir) {
     motor.period(.00005f);                                     // PWM frequency @ 20Khz -- .00005f
 }
 void Motor::drive(float mag, int dir) {

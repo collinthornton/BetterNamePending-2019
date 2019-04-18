@@ -1,8 +1,8 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
-#include <mbed.h>
-#include <string>
+//#include <mbed.h>
+//#include <string>
 
 #include "Position.h"
 #include "PID.h"
@@ -19,15 +19,9 @@ class Control {
         Position position = Position();
 
     private:
-<<<<<<< HEAD
         PID speedControl    = PID(1.0, 0, 0, 0, 1);
         PID thetaControl    = PID(0.1, 0, 0, -180, 180);
         PID phiControl      = PID(1.0, 0, 0, -1, 1);
-=======
-        PID speedControl    = PID(1.0, 0, 0);
-        PID thetaControl    = PID(0.1, 0, 0);
-        PID phiControl      = PID(3.0, 0, 0);
->>>>>>> 2ff497a08dc134aa80e321b6827b0ac4c8d8cb12
         
         Drive drive   = Drive(motorFR, motorBR, motorBL, motorFL);
 
@@ -91,7 +85,7 @@ void Control::assisted(float rho, float theta, float phi) {
     if(axis == "Y") {
         if(position.HALL_WIDTH-(position.ROBOT_WIDTH/2 + abs(x)) < 2) { // Don't let us get closer than 2 cm
             if(theta > 0) theta == 0;
-            theta = thetaControl.compute(x+theta, );
+            theta = thetaControl.compute(x+theta, theta);
         } 
     }   
  }
