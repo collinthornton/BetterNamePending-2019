@@ -30,6 +30,8 @@ class Motor {
         PwmOut motor;
         DigitalOut direction;
 
+        float maxMag = 0.4;
+
 };
 
 Motor::Motor(PinName enable, PinName dir) : motor(enable), direction(dir) {
@@ -38,6 +40,8 @@ Motor::Motor(PinName enable, PinName dir) : motor(enable), direction(dir) {
 void Motor::drive(float mag, int dir) {
     mag = max(mag, (float)0.0);
     mag = min(mag, maxSpeed);
+
+    if(mag > maxMag) mag = maxMag;
 
     direction = dir;
     motor = mag;

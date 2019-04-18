@@ -13,15 +13,21 @@ class Control {
         Control();
         
         void autonomous(void); //! These will need input variables -- set to void initially for the sake of brevity
-        void assisted(void);
+        void assisted(float rho, float theta, float phi);
         void manual(float rho, float theta, float phi);
 
         Position position = Position();
 
     private:
+<<<<<<< HEAD
         PID speedControl    = PID(1.0, 0, 0, 0, 1);
         PID thetaControl    = PID(0.1, 0, 0, -180, 180);
         PID phiControl      = PID(1.0, 0, 0, -1, 1);
+=======
+        PID speedControl    = PID(1.0, 0, 0);
+        PID thetaControl    = PID(0.1, 0, 0);
+        PID phiControl      = PID(3.0, 0, 0);
+>>>>>>> 2ff497a08dc134aa80e321b6827b0ac4c8d8cb12
         
         Drive drive   = Drive(motorFR, motorBR, motorBL, motorFL);
 
@@ -46,19 +52,19 @@ void Control::autonomous(void) {
     float heading = position.location.heading;
     
     if(axis == "Y") {
-        speed = speedControl.compute(y, position.HALL_WIDTH-position.ROBOT_WIDTH/2);
+        speed = speedControl.compute(y, position.HALL_WIDTH-position.ROBOT_WIDTH/2 - 2); //! -- here
 
         if(direction == "FORWARD") theta = 0;
         else theta = 180;
 
-        theta += thetaControl.compute(theta + x, theta);     
+        theta += thetaControl.compute(theta - x, theta);     
     }
     else if(axis == "X") {
         speed = speedControl.compute(x, position.HALL_WIDTH-position.ROBOT_WIDTH/2);
         if(direction == "FORWARD") theta = 90;
         else theta = -90;
 
-        theta += thetaControl.compute(theta + y, theta);
+        theta += thetaControl.compute(theta - y, theta);
     }
     else {
         speed = 0;
@@ -70,7 +76,26 @@ void Control::autonomous(void) {
     drive.drive(speed, theta, phi);
 }
 
-void Control::assisted(void) {}
+void Control::assisted(float rho, float theta, float phi) {
+
+    position.positionTimer();
+
+    string direction, axis;
+    float x = position.location.X;
+    float y = position.location.Y;
+    float heading = position.location.heading;
+
+    position.location.driveAxis == 0 ? axis = "X" : axis = "Y";
+    position.location.driveDir  == 0 ? direction = "FORWARD" : direction = "REVERSE";
+
+    if(axis == "Y") {
+        if(position.HALL_WIDTH-(position.ROBOT_WIDTH/2 + abs(x)) < 2) { // Don't let us get closer than 2 cm
+            if(theta > 0) theta == 0;
+            theta = thetaControl.compute(x+theta, );
+        } 
+    }   
+ }
+
 void Control::manual(float rho, float theta, float phi) {
     string direction, axis;
 
