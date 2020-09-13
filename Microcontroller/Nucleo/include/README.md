@@ -1,92 +1,92 @@
+# Nuceleo Function Definitions
+
 These files are libraries to interface the STM32 Nucleo F746ZG ARM microcontroller with various sensors, chips, and breakout boards. 
 
 Credits for the 'Ping.h' library are given to Tim Eckel and his 'New Ping' library for Arduino. Most of the logic is based on his work. 
 
-Files:
-    Ping.h
-    WiFly.h
-    Control.h
-    HC05.h
-    Motor.h
-    PID.h
-    Position.h
-    Robot.h
-    SerialPC.h
-    Drive.h
+## Files:
+- Ping.h
+- WiFly.h
+- Control.h
+- HC05.h
+- Motor.h
+- PID.h
+- Position.h
+- Robot.h
+- SerialPC.h
+- Drive.h
 
-Documentation:
-    Ping.h
-        -Interfaces Mbed OS based system with generic ultrasonic sensors. 
-        -Only a single pin is needed - the library will toggle it between output and input.
-        -Can form array of sensors. Example:
-            Ping sonar[NUM_DEVICES]= {
-                Ping(PinName, MAX_DISTANCE),
-                Ping(PinName, MAX_DISTANCE)
-            };
+## Documentation:
+### Ping.h
+- Interfaces Mbed OS based system with generic ultrasonic sensors. 
+- Only a single pin is needed - the library will toggle it between output and input.
+- Can form array of sensors. __Example:__
+`Ping sonar[NUM_DEVICES]= {  
+    Ping(PinName, MAX_DISTANCE),  
+    Ping(PinName, MAX_DISTANCE)  
+ };`
         
-        Methods:
-        -Pintg::Ping(PinName, unsigned int max_cm_distance)
+#### Methods:
+        -Ping::Ping(PinName, unsigned int max_cm_distance)
         -unsigned int Ping::ping(unsigned int max_cm_distance)     Returns round-trip time in uS
         -unsigned int Ping::ping_cm(unsigned int max_cm_distance)  Retruns distnace in cm
 
-    WiFly.h
-        -Static library of function
-        -Defines DigitalOut, InterruptIn, Timer, and Timeour interfaces necessary for WiFly
-        -Handles interrupts
+### WiFly.h
+- Static library of function
+- Defines DigitalOut, InterruptIn, Timer, and Timeour interfaces necessary for WiFly
+- Handles interrupts
         
-        Methods:
+#### Methods:
         -Wifly::Wifly()
         -void WiFly::wifiConfig()
         -void WiFly::wifiDisconnectHost()
         -int  WiFly::wifiInit()
 
-    Control.h
-        -Contains two modes of control: autonomous and manual
-            -Autonomous continues moving in the current direction until a corner is detected, then follows the new hall.
-            -Manual is meant for testing purposes. Keyboard input is mapped to motor power, direction of travel, and the rotation ratio
+### Control.h
+- Contains two modes of control: autonomous and manual
+  - Autonomous continues moving in the current direction until a corner is detected, then follows the new hall.
+  - Manual is meant for testing purposes. Keyboard input is mapped to motor power, direction of travel, and the rotation ratio
             
-        Methods:
+#### Methods:
         -Control::Control()
         -void Control::autonomous(void)
         -void Control::manual(float rho, float theta, float phi)
         
-    HC05.h
-        -Brief class to interface with an HC05 bluetooth module
+### HC05.h
+-Brief class to interface with an HC05 bluetooth module
         
-        Methods:
+#### Methods:
         -Bluetooth::Bluetooth()
         -void Bluetooth::transmit(string &out, bool cr=true)
         -void Bluetooth::transmit(char out, bool cr=true)
         -void Bluetooth::transmit(const char* out, bool cr=true)
         -void Bluetooth::processBT(void)
-        **note that cr is short for 'carriage return'**
+> _**Note:** cr is short for 'carriage return'_
         
-    Motor.h
-        -Driver for generic brushed DC motor controllers
+### Motor.h
+- Driver for generic brushed DC motor controllers
         
-        Variables:
+#### Variables:
         -float maxSpeed = 0.4   Maximum percentage of motor power
         
-        Methods:
+#### Methods:
         -void Motor::Motor()
         -void Motor::drive(float mag, int dir)
         
-    PID.h
-        -Contains methods to easily create PID controllers for multiple dimensions of control
+### PID.h
+- Contains methods to easily create PID controllers for multiple dimensions of control
         
-        Methods:
+#### Methods:
         -PID::PID(float Kp, float Ki, float Kd, float minOutput, float maxOutput)
         -float PID::compute(float actual, float desired)
         -void PID::pauseTimer(void)
         -void PID::resumeTimer(void)
-        **note the timer functions are to monitor the elapsed time between functions calls, influnce integrall and derivative errors
+> _**Note:** the timer functions are to monitor the elapsed time between functions calls, influnce integrall and derivative errors_
         
-    Position.h
-        -Algorithms for determining position state relative to the challenge course. Is restricted to an environment where at least 2 sides of the 
-        robot are near to a wall at all times. Method positionTimer() will use a hardware interrupt timer to update the estimated position
-        at 40 Hz
-        
-        Variables:
+### Position.h
+- Algorithms for determining position state relative to the challenge course. Is restricted to an environment where at least 2 sides of the robot are near to a wall at all times. Method positionTimer() will use a hardware interrupt timer to update the estimated position at 40 Hz
+  
+#### Variables:
         -struct location {
             short driveAxis;    0=Y, 1=X **has mecanum wheels**
             short driveDir;     0=forward, 1=backward
@@ -97,25 +97,25 @@ Documentation:
         -const short ROBOT_WIDTH=40, HALL_WIDTH=61, TUNNEL_WIDTH=45 **Units: cm**
         -bool is_updated=false
         
-        Methods:
+#### Methods:
         -Position::Position()
         -string Position::toString(void)
         -int findPosition(void)
         -void positionTimer(void)
 
-    Robot.h
-        -Top level control for the robot.
+### Robot.h
+- Top level control for the robot.
         
-        Variables:
+#### Variables:
         -bool MOTORS_ARMED=true
         -Timer wifiTimer
         
-        Methods:
+#### Methods:
         -Robot::Robot()
         -void Robot::init(void)
         -void Robot::run(void)
         
-    SerialPC.h
+### SerialPC.h
         -Essentially identical to HC05.h Most of the variables keep track of user input for testing purposes.
         
         Variables:
